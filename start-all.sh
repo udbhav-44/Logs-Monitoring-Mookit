@@ -23,7 +23,7 @@ cd ..
 echo "Starting Frontend..."
 cd frontend
 npm install
-npm run dev > ../frontend.log 2>&1 &
+npm run dev -- --host 0.0.0.0 --port 5173 > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
