@@ -65,13 +65,13 @@ A scalable, full-stack platform for monitoring logs from distributed application
 ## Configuration
 
 ### Ports
--   **Backend**: 5001 (Configurable in `backend/.env`, binds to `HOST` env, default `0.0.0.0`)
+-   **Backend**: 5002 (Configurable in `backend/.env`, binds to `HOST` env, default `0.0.0.0`)
 -   **Frontend**: 5173 (Default Vite port)
--   **Frontend API target**: Set `VITE_API_BASE_URL` in `frontend/.env` if the backend is not on `http://localhost:5001`
+-   **Frontend API target**: Set `VITE_API_BASE_URL` in `frontend/.env` if the backend is not on `http://localhost:5002`
 
 ### Backend environment (`backend/.env`)
 ```
-PORT=5001
+PORT=5002
 HOST=0.0.0.0
 MONGO_URI=mongodb://localhost:27017/log-monitoring
 ```
