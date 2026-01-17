@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Prefer Homebrew Node 22 if installed
+if [ -d "/opt/homebrew/opt/node@22/bin" ]; then
+  export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+fi
+
 # Kill any existing node processes to prevent zombies (aggressive but necessary for reset)
 pkill -f "node server.js"
 pkill -f "vite"

@@ -22,7 +22,7 @@ A scalable, full-stack platform for monitoring logs from distributed application
 
 ## Prerequisites
 
--   **Node.js**: v18 or higher
+-   **Node.js**: v20.19+ or v22.12+ recommended (works with Homebrew `node@22`)
 -   **NPM**: v9 or higher
 -   **MongoDB**: running locally or reachable at your `MONGO_URI` (default `mongodb://localhost:27017/log-monitoring`)
 
@@ -65,13 +65,14 @@ A scalable, full-stack platform for monitoring logs from distributed application
 ## Configuration
 
 ### Ports
--   **Backend**: 5001 (Configurable in `backend/.env`)
+-   **Backend**: 5001 (Configurable in `backend/.env`, binds to `HOST` env, default `0.0.0.0`)
 -   **Frontend**: 5173 (Default Vite port)
 -   **Frontend API target**: Set `VITE_API_BASE_URL` in `frontend/.env` if the backend is not on `http://localhost:5001`
 
 ### Backend environment (`backend/.env`)
 ```
 PORT=5001
+HOST=0.0.0.0
 MONGO_URI=mongodb://localhost:27017/log-monitoring
 ```
 If your MongoDB uses authentication or a different host, update `MONGO_URI` accordingly.

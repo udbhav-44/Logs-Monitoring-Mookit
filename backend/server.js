@@ -25,7 +25,8 @@ app.get('/', (req, res) => {
 
 console.log('Loaded PORT from env:', process.env.PORT);
 const PORT = process.env.PORT || 5001;
+const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
 });
