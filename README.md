@@ -67,7 +67,7 @@ A scalable, full-stack platform for monitoring logs from distributed application
 ### Ports
 -   **Backend**: 5002 (Configurable in `backend/.env`, binds to `HOST` env, default `0.0.0.0`)
 -   **Frontend**: 5173 (Default Vite port)
--   **Frontend API target**: Set `VITE_API_BASE_URL` in `frontend/.env` if the backend is not on `http://localhost:5002`
+-   **Frontend API target**: If not using the default hostname, set `VITE_API_BASE_URL` in `frontend/.env` (otherwise it falls back to `window.location.hostname:5002`)
 
 ### Backend environment (`backend/.env`)
 ```

@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5002';
+const fallbackHost = typeof window !== 'undefined'
+  ? `${window.location.protocol}//${window.location.hostname}:5002`
+  : 'http://localhost:5002';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || fallbackHost;
 
 const api = axios.create({
   baseURL: API_BASE,
