@@ -37,7 +37,7 @@ AGENT_PID=$!
 cd ..
 
 echo "All services started!"
-echo "Backend: http://localhost:5001"
+echo "Backend: http://localhost:5002"
 echo "Frontend: http://localhost:5173"
 echo "Check backend.log, frontend.log, and agent.log for details."
 

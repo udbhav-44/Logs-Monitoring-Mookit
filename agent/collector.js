@@ -7,7 +7,7 @@ const path = require('path');
 dotenv.config();
 
 const CONFIG = {
-    backendUrl: process.env.BACKEND_URL || 'http://localhost:5001/api/ingest',
+    backendUrl: process.env.BACKEND_URL || 'http://localhost:5002/api/ingest',
     files: (process.env.LOG_FILES || '').split(',').map(f => f.trim()).filter(f => f),
     appName: process.env.APP_NAME || 'unknown-app',
     vmId: process.env.VM_ID || 'unknown-vm',

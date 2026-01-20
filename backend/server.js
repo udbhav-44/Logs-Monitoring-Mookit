@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 });
 
 console.log('Loaded PORT from env:', process.env.PORT);
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
