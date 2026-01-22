@@ -11,34 +11,40 @@ const CONFIG = {
     files: (process.env.LOG_FILES || '').split(',').map(f => f.trim()).filter(f => f),
     appName: process.env.APP_NAME || 'unknown-app',
     vmId: process.env.VM_ID || 'unknown-vm',
-    batchSize: 10,
+    batchSize: process.env.BATCH_SIZE || 100,
     flushInterval: 5000 // 5 seconds
 };
 
 let logBuffer = [];
 let flushTimer = null;
+let isFlushing = false;
 
 console.log(' Starting Log Collector Agent...');
 console.log(' Configuration:', CONFIG);
 
 const flushLogs = async () => {
-    if (logBuffer.length === 0) return;
-
-    const batch = [...logBuffer];
-    logBuffer = [];
+    if (isFlushing || logBuffer.length === 0) return;
+    isFlushing = true;
 
     try {
-        await axios.post(CONFIG.backendUrl, { logs: batch });
-        console.log(`[${new Date().toISOString()}] Flushed ${batch.length} logs to backend.`);
-    } catch (error) {
-        console.error(`[${new Date().toISOString()}] Failed to send logs:`, error.message);
-        // Determine strict retry logic or drop? For now, we put them back to avoid data loss, 
-        // but limit to avoid memory leak if backend is down for long.
-        if (logBuffer.length < 1000) {
-            logBuffer = [...batch, ...logBuffer];
-        } else {
-            console.warn('Buffer full, dropping logs.');
+        while (logBuffer.length > 0) {
+            const batch = logBuffer.splice(0, CONFIG.batchSize);
+            try {
+                await axios.post(CONFIG.backendUrl, { logs: batch });
+                console.log(`[${new Date().toISOString()}] Flushed ${batch.length} logs to backend.`);
+            } catch (error) {
+                console.error(`[${new Date().toISOString()}] Failed to send logs:`, error.message);
+                // Put them back to avoid data loss, but cap to avoid memory leaks if backend is down.
+                if (logBuffer.length < 1000) {
+                    logBuffer = [...batch, ...logBuffer];
+                } else {
+                    console.warn('Buffer full, dropping logs.');
+                }
+                break;
+            }
         }
+    } finally {
+        isFlushing = false;
     }
 };
 
@@ -66,6 +72,36 @@ const processLine = (filePath, line) => {
     }
 };
 
+const streamFileLines = (filePath, start, end) => {
+    return new Promise((resolve, reject) => {
+        let remainder = '';
+        const streamOptions = { start };
+        if (typeof end === 'number' && end >= start) {
+            streamOptions.end = end;
+        }
+
+        const stream = fs.createReadStream(filePath, streamOptions);
+
+        stream.on('data', (chunk) => {
+            const data = remainder + chunk.toString();
+            const lines = data.split('\n');
+            remainder = lines.pop();
+            lines.forEach(line => processLine(filePath, line));
+        });
+
+        stream.on('end', () => {
+            if (remainder) {
+                processLine(filePath, remainder);
+            }
+            resolve();
+        });
+
+        stream.on('error', (error) => {
+            reject(error);
+        });
+    });
+};
+
 const watchFile = (filePath) => {
     const absolutePath = path.resolve(filePath);
     if (!fs.existsSync(absolutePath)) {
@@ -74,38 +110,60 @@ const watchFile = (filePath) => {
 
     console.log(`Watching file: ${absolutePath}`);
 
-    // Use chokidar to watch file changes
-    // We only want to tail new content, so we need to handle that.
-    // Chokidar 'change' event gives mainly stats or just signals change.
-    // A robust tailing implementation usually involves tracking file size/inode.
-    // For simplicity in this project, we can use a library or implement a simple size tracker.
-
     // Simple implementation: Track file size.
     let currentSize = 0;
-    try {
-        currentSize = fs.statSync(absolutePath).size;
-    } catch (e) { }
+    let initialReadPromise = Promise.resolve();
 
     const watcher = chokidar.watch(absolutePath, {
         persistent: true,
-        usePolling: true
+        usePolling: true,
+        ignoreInitial: true
     });
+
+    const readFromStartAndCatchUp = async (targetPath) => {
+        try {
+            const stat = fs.statSync(targetPath);
+            if (stat.size > 0) {
+                await streamFileLines(targetPath, 0, stat.size - 1);
+            }
+            currentSize = stat.size;
+
+            // Catch any new lines appended while we were reading.
+            const latest = fs.statSync(targetPath);
+            if (latest.size > currentSize) {
+                await streamFileLines(targetPath, currentSize, latest.size - 1);
+                currentSize = latest.size;
+            } else if (latest.size < currentSize) {
+                currentSize = latest.size;
+            }
+        } catch (e) {
+            if (e.code !== 'ENOENT') {
+                console.error(`Error reading ${targetPath}:`, e.message);
+            }
+        }
+    };
+
+    const scheduleInitialRead = (targetPath) => {
+        initialReadPromise = readFromStartAndCatchUp(targetPath);
+        return initialReadPromise;
+    };
+
+    if (fs.existsSync(absolutePath)) {
+        scheduleInitialRead(absolutePath);
+    }
 
     watcher.on('change', async (path) => {
         try {
+            await initialReadPromise;
+        } catch (e) {
+            // If initial read failed, still attempt to process new data.
+        }
+
+        try {
             const stat = fs.statSync(path);
             if (stat.size > currentSize) {
-                const stream = fs.createReadStream(path, {
-                    start: currentSize,
-                    end: stat.size
-                });
-
+                await streamFileLines(path, currentSize, stat.size - 1);
                 currentSize = stat.size;
-
-                stream.on('data', (chunk) => {
-                    const lines = chunk.toString().split('\n');
-                    lines.forEach(line => processLine(path, line));
-                });
             } else if (stat.size < currentSize) {
                 // File truncated (log rotated)
                 currentSize = 0;
@@ -115,11 +173,9 @@ const watchFile = (filePath) => {
         }
     });
 
-    watcher.on('add', (path) => {
+    watcher.on('add', async (path) => {
         console.log(`File detected: ${path}`);
-        try {
-            currentSize = fs.statSync(path).size;
-        } catch (e) { }
+        await scheduleInitialRead(path);
     });
 };
 
