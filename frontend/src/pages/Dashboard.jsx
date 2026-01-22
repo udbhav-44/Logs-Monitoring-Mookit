@@ -51,7 +51,7 @@ const Dashboard = () => {
   if (loading) return <div className="p-8">Loading...</div>;
   if (error || !stats) return <div className="p-8 text-red-600">{error || 'Error loading data'}</div>;
 
-  const statusDist = stats.statusDist || [];
+  const statusDist = (stats.statusDist || []).filter(item => item.code !== null && item.code !== undefined);
   const applications = stats.applications || [];
   const cards = [
     { title: 'Total Logs', value: stats.totals.overall, icon: <FileText className="text-blue-600" />, color: 'bg-blue-50' },
@@ -120,15 +120,31 @@ const Dashboard = () => {
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Status Code Distribution</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">Status Code Distribution</h2>
+              <p className="text-sm text-gray-500">Click a bar to filter logs by status code.</p>
+            </div>
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusDist}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="code" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#818CF8" radius={[6, 6, 0, 0]} onClick={handleStatusClick} cursor="pointer" />
+              <BarChart data={statusDist} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={(value) => value.toLocaleString()} />
+                <YAxis type="category" dataKey="code" width={50} tickFormatter={(value) => String(value)} />
+                <Tooltip
+                  formatter={(value) => [Number(value).toLocaleString(), 'Requests']}
+                  labelFormatter={(label) => `Status ${label}`}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="#818CF8"
+                  radius={[0, 6, 6, 0]}
+                  barSize={20}
+                  minPointSize={4}
+                  onClick={handleStatusClick}
+                  cursor="pointer"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
