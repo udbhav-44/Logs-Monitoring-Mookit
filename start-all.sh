@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Prefer Homebrew Node 22 if installed
-if [ -d "/opt/homebrew/opt/node@22/bin" ]; then
-  export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
-fi
 
 # Kill any existing node processes to prevent zombies (aggressive but necessary for reset)
 pkill -f "node server.js"
@@ -14,6 +10,9 @@ pkill -f "node collector.js"
 echo "Starting Backend..."
 cd backend
 npm install
+# if [ "$RESET_DB" = "1" ] || [ "$RESET_DB" = "true" ]; then
+  echo "Resetting MongoDB (logs collection)..."
+  npm run reset:db
 # Pipe output to log file
 npm start > ../backend.log 2>&1 &
 BACKEND_PID=$!
