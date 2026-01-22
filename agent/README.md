@@ -44,4 +44,4 @@ node collector.js &
 ```
 (Or use a process manager like `pm2` for production: `pm2 start collector.js --name log-agent`)
 
-The agent will immediately start tailing the files and sending new log lines to your central dashboard.
+The agent will read the full file once on startup, then continue tailing new log lines to your central dashboard.

@@ -45,6 +45,11 @@ A scalable, full-stack platform for monitoring logs from distributed application
 
 4.  **Open the Dashboard**: Go to [http://localhost:5173](http://localhost:5173).
 
+Optional: **Clean start (reset logs)** before launching:
+```bash
+RESET_DB=1 ./start-all.sh
+```
+
 ## Project Structure
 
 ```
@@ -112,5 +117,5 @@ echo '{"timestamp": "2026-01-17T20:05:00Z", "level": "error", "message": "Databa
 
 -   **"Error loading data"**: Ensure the backend is running on port 5001. Check `backend.log` if created.
 -   **MongoDB connection failed**: Verify `MONGO_URI` in `backend/.env` and that `mongod` is running and reachable.
--   **Agent not sending logs**: The agent only reads *new* lines added to the file. It will not upload the entire history on startup. Append new lines to test.
+-   **Agent not sending logs**: The agent reads the full file once on startup, then tails new lines. Restart the agent after changing parser logic.
 -   **Port 5001 in use**: Update `PORT` in `backend/.env`, `BACKEND_URL` in `agent/.env`, and the API URLs in `frontend/src/pages/*.jsx`.
