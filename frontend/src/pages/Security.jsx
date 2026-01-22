@@ -16,6 +16,7 @@ const Security = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const severityRank = { high: 0, medium: 1, low: 2 };
 
   useEffect(() => {
     const load = async () => {
@@ -23,7 +24,13 @@ const Security = () => {
       try {
         const res = await fetchSuspicious();
         const payload = Array.isArray(res) ? res : res?.alerts || [];
-        setAlerts(payload);
+        const ordered = [...payload].sort((a, b) => {
+          const aRank = severityRank[a.severity] ?? 3;
+          const bRank = severityRank[b.severity] ?? 3;
+          if (aRank !== bRank) return aRank - bRank;
+          return (b.count || 0) - (a.count || 0);
+        });
+        setAlerts(ordered);
       } catch (error) {
         console.error(error);
       } finally {

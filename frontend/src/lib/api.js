@@ -15,6 +15,7 @@ export const fetchOverview = () => api.get('/api/analytics/overview').then(res =
 export const searchLogs = (params) => api.get('/api/analytics/search', { params }).then(res => res.data);
 export const fetchUserActivity = (uid, params = {}) =>
   api.get('/api/analytics/activity', { params: { uid, ...params } }).then(res => res.data);
+export const fetchUids = (params = {}) => api.get('/api/analytics/uids', { params }).then(res => res.data);
 export const fetchSuspicious = () => api.get('/api/analytics/suspicious').then(res => res.data);
 export const fetchApplications = () => api.get('/api/analytics/applications').then(res => res.data);
 

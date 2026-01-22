@@ -48,6 +48,38 @@ const applyTextFilter = (docs, searchTerm) => {
     });
 };
 
+// @desc    Get UID Directory
+// @route   GET /api/analytics/uids
+const getUidDirectory = async (req, res) => {
+    try {
+        const limit = Math.min(Number(req.query.limit) || 500, 2000);
+        const start = toDate(req.query.start);
+        const end = toDate(req.query.end);
+        const search = req.query.search ? String(req.query.search) : null;
+
+        const match = { 'parsedData.uid': { $exists: true, $ne: null, $ne: '' } };
+        if (start || end) {
+            match.timestamp = {};
+            if (start) match.timestamp.$gte = start;
+            if (end) match.timestamp.$lte = end;
+        }
+        if (search) {
+            match['parsedData.uid'] = { $regex: search, $options: 'i' };
+        }
+
+        const uids = await Log.aggregate([
+            { $match: match },
+            { $group: { _id: '$parsedData.uid', count: { $sum: 1 }, lastSeen: { $max: '$timestamp' } } },
+            { $sort: { lastSeen: -1 } },
+            { $limit: limit }
+        ]);
+
+        res.json(uids.map(item => ({ uid: item._id, count: item.count, lastSeen: item.lastSeen })));
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Get Overview Stats
 // @route   GET /api/analytics/overview
 const getOverviewStats = async (req, res) => {
@@ -394,4 +426,11 @@ const getApplicationOverview = async (req, res) => {
     }
 };
 
-module.exports = { getOverviewStats, searchLogs, getUserActivity, getSuspiciousActivity, getApplicationOverview };
+module.exports = {
+    getOverviewStats,
+    searchLogs,
+    getUserActivity,
+    getSuspiciousActivity,
+    getApplicationOverview,
+    getUidDirectory
+};
