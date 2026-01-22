@@ -61,6 +61,33 @@ const parseNginxLog = (line) => {
 
 const parseAppLog = (line) => {
     const fallbackTimestamp = new Date();
+    const formattedMatch = line.match(/^\[(?<timestamp>[^\]]+)\]\s+(?<method>\S+)\s+(?<status>\d{3}|-)\s+(?<url>\S+)\s+(?<uid>\S+)\s+(?<course>\S+)\s+(?<ip>\S+)\s+\[(?<responseTimeMs>[\d.]+|-)\s*ms\]\s+(?<userAgent>.+)$/);
+    if (formattedMatch && formattedMatch.groups) {
+        const statusRaw = formattedMatch.groups.status;
+        const timestamp = new Date(formattedMatch.groups.timestamp);
+        const parsedData = {
+            method: formattedMatch.groups.method,
+            status: statusRaw === '-' ? null : Number(statusRaw),
+            url: formattedMatch.groups.url,
+            uid: formattedMatch.groups.uid === '-' ? null : formattedMatch.groups.uid,
+            course: formattedMatch.groups.course === '-' ? null : formattedMatch.groups.course,
+            ip: formattedMatch.groups.ip,
+            userAgent: formattedMatch.groups.userAgent
+        };
+        const responseTimeRaw = formattedMatch.groups.responseTimeMs;
+        if (responseTimeRaw !== '-') {
+            const responseTimeMs = Number(responseTimeRaw);
+            if (!Number.isNaN(responseTimeMs)) {
+                parsedData.responseTimeMs = responseTimeMs;
+            }
+        }
+
+        return {
+            timestamp: Number.isNaN(timestamp.getTime()) ? fallbackTimestamp : timestamp,
+            parsedData
+        };
+    }
+
     try {
         const jsonLog = typeof line === 'string' ? JSON.parse(line) : line;
         const parsedTs = jsonLog.timestamp ? new Date(jsonLog.timestamp) : fallbackTimestamp;
@@ -157,7 +184,7 @@ const parseLog = (logEntry) => {
     if (!mergedParsedData.uid) mergedParsedData.uid = extractUidFromText(rawMessage);
     if (!mergedParsedData.ip) mergedParsedData.ip = extractIpFromText(rawMessage);
     if (mergedParsedData.status === undefined) {
-        const statusMatch = rawMessage.match(/\b(\d{3})\b/);
+        const statusMatch = rawMessage.match(/(?<!\.)\b(\d{3})\b(?!\.)/);
         if (statusMatch) mergedParsedData.status = Number(statusMatch[1]);
     }
 
