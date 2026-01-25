@@ -1,22 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Activity, AlertTriangle, FileText, Shield } from 'lucide-react';
 import { fetchOverview } from '../lib/api';
 
-const formatBucket = (bucket) => bucket.replace('T', ' ').slice(5);
+const RANGE_STORAGE_KEY = 'logs.monitoring.dashboard.range';
+const rangeOptions = [
+  { value: '24h', label: 'Last 24h' },
+  { value: '7d', label: 'Last 7d' },
+  { value: '30d', label: 'Last 30d' },
+  { value: 'all', label: 'All time' }
+];
+
+const getStoredRange = (fallback) => {
+  if (typeof window === 'undefined') return fallback;
+  const stored = window.localStorage.getItem(RANGE_STORAGE_KEY);
+  const allowed = new Set(rangeOptions.map((option) => option.value));
+  return stored && allowed.has(stored) ? stored : fallback;
+};
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [range, setRange] = useState(() => getStoredRange('30d'));
+  const hasUserSetRange = useRef(false);
   const navigate = useNavigate();
 
-  const load = async () => {
+  const rangeLabel = rangeOptions.find((option) => option.value === range)?.label || 'Last 24h';
+
+  const load = async (selectedRange = range) => {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchOverview();
+      const data = await fetchOverview({ range: selectedRange });
       setStats(data);
     } catch (err) {
       console.error(err);
@@ -27,8 +44,21 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    load(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(RANGE_STORAGE_KEY, range);
+  }, [range]);
+
+  useEffect(() => {
+    if (hasUserSetRange.current) return;
+    if (stats?.totals?.window === 0 && (stats?.totals?.overall || 0) > 0 && range !== 'all') {
+      setRange('all');
+    }
+  }, [stats, range]);
 
   const goToLogs = (params = {}) => {
     const search = new URLSearchParams(params).toString();
@@ -43,8 +73,9 @@ const Dashboard = () => {
   const handleTrafficClick = (chartState) => {
     if (!chartState?.activeLabel) return;
     const bucket = chartState.activeLabel;
-    const start = `${bucket}:00:00`;
-    const end = `${bucket}:59:59`;
+    const bucketUnit = stats?.bucketUnit || 'hour';
+    const start = bucketUnit === 'day' ? `${bucket}T00:00:00` : `${bucket}:00:00`;
+    const end = bucketUnit === 'day' ? `${bucket}T23:59:59` : `${bucket}:59:59`;
     goToLogs({ start, end });
   };
 
@@ -53,9 +84,10 @@ const Dashboard = () => {
 
   const statusDist = (stats.statusDist || []).filter(item => item.code !== null && item.code !== undefined);
   const applications = stats.applications || [];
+  const rangeCount = stats.totals.window ?? stats.totals.last24h;
   const cards = [
     { title: 'Total Logs', value: stats.totals.overall, icon: <FileText className="text-blue-600" />, color: 'bg-blue-50' },
-    { title: 'Last 24h', value: stats.totals.last24h, icon: <Activity className="text-indigo-600" />, color: 'bg-indigo-50' },
+    { title: range === '24h' ? 'Last 24h' : `Range (${rangeLabel})`, value: rangeCount, icon: <Activity className="text-indigo-600" />, color: 'bg-indigo-50' },
     { title: 'Client Errors (4xx)', value: stats.statusBuckets.client4xx, icon: <AlertTriangle className="text-orange-600" />, color: 'bg-orange-50' },
     { title: 'Server Errors (5xx)', value: stats.statusBuckets.server5xx, icon: <Shield className="text-red-600" />, color: 'bg-red-50' },
   ];
@@ -68,17 +100,38 @@ const Dashboard = () => {
     trafficMap.set(item.bucket, existing);
   });
   const trafficData = Array.from(trafficMap.values()).sort((a, b) => (a.bucket > b.bucket ? 1 : -1));
+  const bucketUnit = stats.bucketUnit || 'hour';
+  const formatBucket = (bucket) => {
+    if (!bucket) return '';
+    if (bucketUnit === 'day') return bucket;
+    return bucket.replace('T', ' ').slice(5);
+  };
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">System Overview</h1>
           <p className="text-gray-500">Traffic, errors, and activity across all monitored apps.</p>
         </div>
-        <button onClick={load} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">Range</div>
+          <select
+            value={range}
+            onChange={(event) => {
+              hasUserSetRange.current = true;
+              setRange(event.target.value);
+            }}
+            className="px-3 py-2 border rounded-lg text-sm"
+          >
+            {rangeOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <button onClick={() => load(range)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -101,8 +154,8 @@ const Dashboard = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-800">Traffic vs Errors (Last 24h)</h2>
-              <p className="text-sm text-gray-500">Hourly breakdown of requests and 4xx/5xx responses.</p>
+              <h2 className="text-lg font-bold text-gray-800">Traffic vs Errors ({rangeLabel})</h2>
+              <p className="text-sm text-gray-500">{bucketUnit === 'day' ? 'Daily' : 'Hourly'} breakdown of requests and 4xx/5xx responses.</p>
             </div>
           </div>
           <div className="h-72">
@@ -153,7 +206,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-3">Top Endpoints (24h)</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-3">Top Endpoints ({rangeLabel})</h2>
           <div className="space-y-3">
             {(stats.topEndpoints || []).map((item) => (
               <div
@@ -178,7 +231,7 @@ const Dashboard = () => {
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Top Actors (24h)</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Top Actors ({rangeLabel})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-500 mb-2">IP Addresses</h3>

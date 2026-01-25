@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { searchLogs } from '../lib/api';
@@ -13,6 +13,7 @@ const LogExplorer = () => {
   const [loading, setLoading] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const skipPageFetchRef = useRef(true);
   const [filters, setFilters] = useState({
     ip: '',
     uid: '',
@@ -46,19 +47,22 @@ const LogExplorer = () => {
   useEffect(() => {
     // Seed filters from URL on first load
     const initialFilters = { ...filters };
+    const initialPage = Number(searchParams.get('page')) || 1;
     searchParams.forEach((value, key) => {
-      if (key === 'page') {
-        setPage(Number(value) || 1);
-      } else if (initialFilters[key] !== undefined) {
+      if (key !== 'page' && initialFilters[key] !== undefined) {
         initialFilters[key] = value;
       }
     });
     setFilters(initialFilters);
-    fetchLogs(Number(searchParams.get('page')) || 1, initialFilters);
+    setPage(initialPage);
+    fetchLogs(initialPage, initialFilters).finally(() => {
+      skipPageFetchRef.current = false;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (skipPageFetchRef.current) return;
     fetchLogs(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);

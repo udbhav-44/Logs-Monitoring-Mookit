@@ -12,44 +12,85 @@ const severityBadge = (severity = 'medium') => {
   return styles[severity] || styles.medium;
 };
 
+const RANGE_STORAGE_KEY = 'logs.monitoring.security.range';
+const rangeOptions = [
+  { value: '24h', label: 'Last 24h' },
+  { value: '7d', label: 'Last 7d' },
+  { value: '30d', label: 'Last 30d' },
+  { value: 'all', label: 'All time' }
+];
+
+const getStoredRange = (fallback) => {
+  if (typeof window === 'undefined') return fallback;
+  const stored = window.localStorage.getItem(RANGE_STORAGE_KEY);
+  const allowed = new Set(rangeOptions.map((option) => option.value));
+  return stored && allowed.has(stored) ? stored : fallback;
+};
+
 const Security = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [range, setRange] = useState(() => getStoredRange('24h'));
   const navigate = useNavigate();
   const severityRank = { high: 0, medium: 1, low: 2 };
+  const rangeLabel = rangeOptions.find((option) => option.value === range)?.label || 'Last 24h';
+
+  const load = async (selectedRange = range) => {
+    setLoading(true);
+    try {
+      const res = await fetchSuspicious({ range: selectedRange });
+      const payload = Array.isArray(res) ? res : res?.alerts || [];
+      const ordered = [...payload].sort((a, b) => {
+        const aRank = severityRank[a.severity] ?? 3;
+        const bRank = severityRank[b.severity] ?? 3;
+        if (aRank !== bRank) return aRank - bRank;
+        return (b.count || 0) - (a.count || 0);
+      });
+      setAlerts(ordered);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetchSuspicious();
-        const payload = Array.isArray(res) ? res : res?.alerts || [];
-        const ordered = [...payload].sort((a, b) => {
-          const aRank = severityRank[a.severity] ?? 3;
-          const bRank = severityRank[b.severity] ?? 3;
-          if (aRank !== bRank) return aRank - bRank;
-          return (b.count || 0) - (a.count || 0);
-        });
-        setAlerts(ordered);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+    load(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(RANGE_STORAGE_KEY, range);
+  }, [range]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <ShieldAlert className="text-red-600" />
-        <h1 className="text-2xl font-bold text-gray-800">Security & Anomalies</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="text-red-600" />
+          <h1 className="text-2xl font-bold text-gray-800">Security & Anomalies</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">Range</div>
+          <select
+            value={range}
+            onChange={(event) => setRange(event.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm"
+          >
+            {rangeOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <button onClick={() => load(range)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+            Refresh
+          </button>
+        </div>
       </div>
       <div className="bg-red-50 border border-red-100 p-4 rounded-lg flex items-start gap-4">
         <AlertOctagon className="text-red-600 shrink-0" />
         <div>
-          <h3 className="font-bold text-red-800 mb-1">Automated detections (last 24h)</h3>
+          <h3 className="font-bold text-red-800 mb-1">Automated detections ({rangeLabel})</h3>
           <p className="text-red-700 text-sm">
             Spikes in unauthorized requests, 5xx errors, and abnormal request rates are highlighted here. Investigate the listed actors promptly.
           </p>
@@ -90,7 +131,7 @@ const Security = () => {
 
       {alerts.length === 0 && !loading && (
         <div className="p-8 text-center bg-white rounded-xl border border-dashed border-gray-300">
-          <p className="text-gray-500">No high-risk anomalies detected in the last 24 hours.</p>
+          <p className="text-gray-500">No high-risk anomalies detected in {rangeLabel.toLowerCase()}.</p>
         </div>
       )}
     </div>
