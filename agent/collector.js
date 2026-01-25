@@ -11,8 +11,10 @@ const CONFIG = {
     files: (process.env.LOG_FILES || '').split(',').map(f => f.trim()).filter(f => f),
     appName: process.env.APP_NAME || 'unknown-app',
     vmId: process.env.VM_ID || 'unknown-vm',
-    batchSize: process.env.BATCH_SIZE || 100,
-    flushInterval: 5000 // 5 seconds
+    batchSize: Number(process.env.BATCH_SIZE) || 100,
+    flushInterval: Number(process.env.FLUSH_INTERVAL_MS) || 5000,
+    tailFromEnd: process.env.TAIL_FROM_END === '1' || process.env.TAIL_FROM_END === 'true',
+    usePolling: process.env.USE_POLLING === '1' || process.env.USE_POLLING === 'true'
 };
 
 let logBuffer = [];
@@ -116,14 +118,14 @@ const watchFile = (filePath) => {
 
     const watcher = chokidar.watch(absolutePath, {
         persistent: true,
-        usePolling: true,
+        usePolling: CONFIG.usePolling,
         ignoreInitial: true
     });
 
     const readFromStartAndCatchUp = async (targetPath) => {
         try {
             const stat = fs.statSync(targetPath);
-            if (stat.size > 0) {
+            if (stat.size > 0 && !CONFIG.tailFromEnd) {
                 await streamFileLines(targetPath, 0, stat.size - 1);
             }
             currentSize = stat.size;
