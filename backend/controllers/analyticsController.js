@@ -2,11 +2,75 @@ const Log = require('../models/Log');
 
 const HOURS_24 = 24 * 60 * 60 * 1000;
 const DAYS_7 = 7 * 24 * 60 * 60 * 1000;
+const DAYS_30 = 30 * 24 * 60 * 60 * 1000;
+const CACHE_TTL_MS = {
+    overview: 15000,
+    suspicious: 15000,
+    applications: 30000
+};
+
+const cache = new Map();
+
+const getCached = (key) => {
+    const entry = cache.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt <= Date.now()) {
+        cache.delete(key);
+        return null;
+    }
+    return entry.value;
+};
+
+const setCached = (key, value, ttlMs) => {
+    cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+};
+
+const buildCacheKey = (prefix, params = {}) => {
+    const entries = Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .sort(([a], [b]) => a.localeCompare(b));
+    return `${prefix}:${JSON.stringify(entries)}`;
+};
 
 const toDate = (value) => {
     if (!value) return null;
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const getRangeWindow = (params = {}, defaultRange = '24h') => {
+    const start = toDate(params.start);
+    const end = toDate(params.end);
+    if (start || end) return { start, end };
+
+    const range = String(params.range || '').toLowerCase() || defaultRange;
+    const now = Date.now();
+
+    if (range === 'all') return { start: null, end: null };
+    if (range === '7d') return { start: new Date(now - DAYS_7), end: new Date(now) };
+    if (range === '30d') return { start: new Date(now - DAYS_30), end: new Date(now) };
+    if (range === '24h') return { start: new Date(now - HOURS_24), end: new Date(now) };
+
+    return { start: new Date(now - HOURS_24), end: new Date(now) };
+};
+
+const buildTimeMatch = (start, end) => {
+    const match = {};
+    if (start || end) {
+        match.timestamp = {};
+        if (start) match.timestamp.$gte = start;
+        if (end) match.timestamp.$lte = end;
+    }
+    return match;
+};
+
+const resolveBucket = (start, end) => {
+    const spanMs = start && end ? end - start : null;
+    const useDaily = !start || !end || (spanMs !== null && spanMs > DAYS_7);
+    return {
+        unit: useDaily ? 'day' : 'hour',
+        format: useDaily ? '%Y-%m-%d' : '%Y-%m-%dT%H'
+    };
 };
 
 const buildQuery = (params = {}) => {
@@ -35,17 +99,6 @@ const buildQuery = (params = {}) => {
     }
 
     return query;
-};
-
-const applyTextFilter = (docs, searchTerm) => {
-    if (!searchTerm) return docs;
-    const needle = searchTerm.toLowerCase();
-    return docs.filter(doc => {
-        const raw = (doc.rawMessage || '').toLowerCase();
-        const parsedMsg = (doc.parsedData?.message || '').toLowerCase();
-        const url = (doc.parsedData?.url || '').toLowerCase();
-        return raw.includes(needle) || parsedMsg.includes(needle) || url.includes(needle);
-    });
 };
 
 // @desc    Get UID Directory
@@ -84,81 +137,96 @@ const getUidDirectory = async (req, res) => {
 // @route   GET /api/analytics/overview
 const getOverviewStats = async (req, res) => {
     try {
+        const cacheKey = buildCacheKey('overview', req.query);
+        const cached = getCached(cacheKey);
+        if (cached) return res.json(cached);
+
+        const { start: windowStart, end: windowEnd } = getRangeWindow(req.query, '24h');
+        const windowMatch = buildTimeMatch(windowStart, windowEnd);
+        const { unit: bucketUnit, format: bucketFormat } = resolveBucket(windowStart, windowEnd);
         const now = Date.now();
         const last24h = new Date(now - HOURS_24);
         const last7d = new Date(now - DAYS_7);
+        const windowCountPromise = Object.keys(windowMatch).length
+            ? Log.countDocuments(windowMatch)
+            : Log.estimatedDocumentCount();
 
-        const [overall, last7dCount, last24hCount, statusDist, traffic, errorTrend, topEndpoints, topIps, topUids, applications] =
+        const [overall, last7dCount, last24hCount, windowCountRaw, last24hAgg, applications] =
             await Promise.all([
                 Log.estimatedDocumentCount(),
                 Log.countDocuments({ timestamp: { $gte: last7d } }),
                 Log.countDocuments({ timestamp: { $gte: last24h } }),
+                windowCountPromise,
                 Log.aggregate([
-                    { $match: { timestamp: { $gte: last24h }, 'parsedData.status': { $exists: true } } },
-                    { $group: { _id: '$parsedData.status', count: { $sum: 1 } } },
-                    { $sort: { _id: 1 } }
-                ]),
-                Log.aggregate([
-                    { $match: { timestamp: { $gte: last24h } } },
+                    ...(Object.keys(windowMatch).length ? [{ $match: windowMatch }] : []),
                     {
-                        $group: {
-                            _id: { $dateToString: { format: '%Y-%m-%dT%H', date: '$timestamp' } },
-                            count: { $sum: 1 }
+                        $facet: {
+                            statusDist: [
+                                { $match: { 'parsedData.status': { $exists: true } } },
+                                { $group: { _id: '$parsedData.status', count: { $sum: 1 } } },
+                                { $sort: { _id: 1 } }
+                            ],
+                            traffic: [
+                                {
+                                    $group: {
+                                        _id: { $dateToString: { format: bucketFormat, date: '$timestamp' } },
+                                        count: { $sum: 1 }
+                                    }
+                                },
+                                { $sort: { _id: 1 } }
+                            ],
+                            errorTrend: [
+                                { $match: { 'parsedData.status': { $gte: 400 } } },
+                                {
+                                    $group: {
+                                        _id: { $dateToString: { format: bucketFormat, date: '$timestamp' } },
+                                        count: { $sum: 1 }
+                                    }
+                                },
+                                { $sort: { _id: 1 } }
+                            ],
+                            topEndpoints: [
+                                { $addFields: { endpoint: { $ifNull: ['$parsedData.url', '$parsedData.message'] } } },
+                                {
+                                    $group: {
+                                        _id: '$endpoint',
+                                        count: { $sum: 1 },
+                                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                                        lastSeen: { $max: '$timestamp' }
+                                    }
+                                },
+                                { $sort: { count: -1 } },
+                                { $limit: 5 }
+                            ],
+                            topIps: [
+                                {
+                                    $group: {
+                                        _id: '$parsedData.ip',
+                                        count: { $sum: 1 },
+                                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                                        lastSeen: { $max: '$timestamp' }
+                                    }
+                                },
+                                { $sort: { count: -1 } },
+                                { $limit: 5 }
+                            ],
+                            topUids: [
+                                {
+                                    $group: {
+                                        _id: '$parsedData.uid',
+                                        count: { $sum: 1 },
+                                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                                        lastSeen: { $max: '$timestamp' }
+                                    }
+                                },
+                                { $sort: { count: -1 } },
+                                { $limit: 5 }
+                            ]
                         }
-                    },
-                    { $sort: { _id: 1 } }
+                    }
                 ]),
                 Log.aggregate([
-                    { $match: { timestamp: { $gte: last24h }, 'parsedData.status': { $gte: 400 } } },
-                    {
-                        $group: {
-                            _id: { $dateToString: { format: '%Y-%m-%dT%H', date: '$timestamp' } },
-                            count: { $sum: 1 }
-                        }
-                    },
-                    { $sort: { _id: 1 } }
-                ]),
-                Log.aggregate([
-                    { $match: { timestamp: { $gte: last24h } } },
-                    { $addFields: { endpoint: { $ifNull: ['$parsedData.url', '$parsedData.message'] } } },
-                    {
-                        $group: {
-                            _id: '$endpoint',
-                            count: { $sum: 1 },
-                            errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                            lastSeen: { $max: '$timestamp' }
-                        }
-                    },
-                    { $sort: { count: -1 } },
-                    { $limit: 5 }
-                ]),
-                Log.aggregate([
-                    { $match: { timestamp: { $gte: last24h } } },
-                    {
-                        $group: {
-                            _id: '$parsedData.ip',
-                            count: { $sum: 1 },
-                            errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                            lastSeen: { $max: '$timestamp' }
-                        }
-                    },
-                    { $sort: { count: -1 } },
-                    { $limit: 5 }
-                ]),
-                Log.aggregate([
-                    { $match: { timestamp: { $gte: last24h } } },
-                    {
-                        $group: {
-                            _id: '$parsedData.uid',
-                            count: { $sum: 1 },
-                            errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                            lastSeen: { $max: '$timestamp' }
-                        }
-                    },
-                    { $sort: { count: -1 } },
-                    { $limit: 5 }
-                ]),
-                Log.aggregate([
+                    ...(Object.keys(windowMatch).length ? [{ $match: windowMatch }] : []),
                     {
                         $group: {
                             _id: '$appInfo.name',
@@ -170,6 +238,14 @@ const getOverviewStats = async (req, res) => {
                     }
                 ])
             ]);
+
+        const facet = last24hAgg[0] || {};
+        const statusDist = facet.statusDist || [];
+        const traffic = facet.traffic || [];
+        const errorTrend = facet.errorTrend || [];
+        const topEndpoints = facet.topEndpoints || [];
+        const topIps = facet.topIps || [];
+        const topUids = facet.topUids || [];
 
         const statusBuckets = { ok2xx: 0, redirect3xx: 0, client4xx: 0, server5xx: 0 };
         statusDist.forEach(item => {
@@ -191,11 +267,13 @@ const getOverviewStats = async (req, res) => {
             }, {})
         })).sort((a, b) => b.total - a.total);
 
-        res.json({
+        const windowCount = Object.keys(windowMatch).length ? windowCountRaw : overall;
+        const payload = {
             totals: {
                 overall,
                 last7d: last7dCount,
-                last24h: last24hCount
+                last24h: last24hCount,
+                window: windowCount
             },
             statusDist: statusDist.map(s => ({ code: s._id, count: s.count })),
             statusBuckets,
@@ -204,8 +282,13 @@ const getOverviewStats = async (req, res) => {
             topEndpoints: topEndpoints.map(e => ({ endpoint: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
             topIps: topIps.map(e => ({ ip: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
             topUids: topUids.map(e => ({ uid: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
-            applications: appView
-        });
+            applications: appView,
+            bucketUnit,
+            range: { start: windowStart, end: windowEnd }
+        };
+
+        setCached(cacheKey, payload, CACHE_TTL_MS.overview);
+        res.json(payload);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -221,17 +304,35 @@ const searchLogs = async (req, res) => {
         const query = buildQuery(req.query);
         const skip = (currentPage - 1) * pageSize;
 
+        const searchTerm = search ? String(search).trim() : '';
+        const searchQuery = searchTerm ? { ...query, $text: { $search: searchTerm } } : query;
+
         let total = 0;
         let results = [];
 
-        if (search) {
-            const docs = await Log.find(query).sort({ timestamp: -1 }).lean();
-            const filtered = applyTextFilter(docs, search);
-            total = filtered.length;
-            results = filtered.slice(skip, skip + pageSize);
-        } else {
-            total = await Log.countDocuments(query);
-            results = await Log.find(query)
+        try {
+            total = await Log.countDocuments(searchQuery);
+            results = await Log.find(searchQuery)
+                .sort({ timestamp: -1 })
+                .skip(skip)
+                .limit(pageSize)
+                .lean();
+        } catch (error) {
+            if (!searchTerm || !/text index/i.test(error.message)) {
+                throw error;
+            }
+            const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escaped, 'i');
+            const fallbackQuery = {
+                ...query,
+                $or: [
+                    { rawMessage: regex },
+                    { 'parsedData.message': regex },
+                    { 'parsedData.url': regex }
+                ]
+            };
+            total = await Log.countDocuments(fallbackQuery);
+            results = await Log.find(fallbackQuery)
                 .sort({ timestamp: -1 })
                 .skip(skip)
                 .limit(pageSize)
@@ -304,12 +405,17 @@ const getUserActivity = async (req, res) => {
 // @route   GET /api/analytics/suspicious
 const getSuspiciousActivity = async (req, res) => {
     try {
-        const windowStart = new Date(Date.now() - HOURS_24);
+        const cacheKey = buildCacheKey('suspicious', req.query);
+        const cached = getCached(cacheKey);
+        if (cached) return res.json(cached);
+
+        const { start: windowStart, end: windowEnd } = getRangeWindow(req.query, '24h');
+        const windowMatch = buildTimeMatch(windowStart, windowEnd);
 
         const unauthorized = await Log.aggregate([
             {
                 $match: {
-                    timestamp: { $gte: windowStart },
+                    ...windowMatch,
                     'parsedData.status': { $in: [401, 403] },
                     'parsedData.ip': { $exists: true, $ne: null }
                 }
@@ -323,7 +429,7 @@ const getSuspiciousActivity = async (req, res) => {
         const serverErrors = await Log.aggregate([
             {
                 $match: {
-                    timestamp: { $gte: windowStart },
+                    ...windowMatch,
                     'parsedData.status': { $gte: 500 },
                     'parsedData.ip': { $exists: true, $ne: null }
                 }
@@ -335,7 +441,7 @@ const getSuspiciousActivity = async (req, res) => {
         ]);
 
         const perMinuteBursts = await Log.aggregate([
-            { $match: { timestamp: { $gte: windowStart }, 'parsedData.ip': { $exists: true, $ne: null } } },
+            { $match: { ...windowMatch, 'parsedData.ip': { $exists: true, $ne: null } } },
             {
                 $group: {
                     _id: {
@@ -386,6 +492,7 @@ const getSuspiciousActivity = async (req, res) => {
 
         alerts.sort((a, b) => b.count - a.count);
 
+        setCached(cacheKey, alerts, CACHE_TTL_MS.suspicious);
         res.json(alerts);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -396,17 +503,27 @@ const getSuspiciousActivity = async (req, res) => {
 // @route   GET /api/analytics/applications
 const getApplicationOverview = async (req, res) => {
     try {
-        const applications = await Log.aggregate([
-            {
-                $group: {
-                    _id: '$appInfo.name',
-                    total: { $sum: 1 },
-                    errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                    vmIds: { $addToSet: '$appInfo.vmId' },
-                    sources: { $push: '$sourceType' }
-                }
+        const cacheKey = buildCacheKey('applications', req.query);
+        const cached = getCached(cacheKey);
+        if (cached) return res.json(cached);
+
+        const { start: windowStart, end: windowEnd } = getRangeWindow(req.query, 'all');
+        const windowMatch = buildTimeMatch(windowStart, windowEnd);
+        const pipeline = [];
+        if (Object.keys(windowMatch).length) {
+            pipeline.push({ $match: windowMatch });
+        }
+        pipeline.push({
+            $group: {
+                _id: '$appInfo.name',
+                total: { $sum: 1 },
+                errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                vmIds: { $addToSet: '$appInfo.vmId' },
+                sources: { $push: '$sourceType' }
             }
-        ]);
+        });
+
+        const applications = await Log.aggregate(pipeline);
 
         const appView = applications.map(app => ({
             app: app._id || 'unknown-app',
@@ -420,7 +537,9 @@ const getApplicationOverview = async (req, res) => {
             }, {})
         })).sort((a, b) => b.total - a.total);
 
-        res.json({ applications: appView });
+        const payload = { applications: appView, range: { start: windowStart, end: windowEnd } };
+        setCached(cacheKey, payload, CACHE_TTL_MS.applications);
+        res.json(payload);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

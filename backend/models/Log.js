@@ -37,5 +37,12 @@ const logSchema = new mongoose.Schema({
 logSchema.index({ 'parsedData.uid': 1, timestamp: -1 });
 logSchema.index({ 'parsedData.ip': 1, timestamp: -1 });
 logSchema.index({ sourceType: 1, timestamp: -1 });
+logSchema.index({ 'parsedData.status': 1, timestamp: -1 });
+logSchema.index({ 'appInfo.name': 1, timestamp: -1 });
+logSchema.index({ 'appInfo.vmId': 1, timestamp: -1 });
+logSchema.index(
+  { rawMessage: 'text', 'parsedData.message': 'text', 'parsedData.url': 'text' },
+  { weights: { 'parsedData.message': 5, 'parsedData.url': 3, rawMessage: 1 } }
+);
 
 module.exports = mongoose.model('Log', logSchema);

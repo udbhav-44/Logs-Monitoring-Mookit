@@ -33,7 +33,7 @@ const ingestLogs = async (req, res) => {
             };
         });
 
-        await Log.insertMany(processedLogs);
+        await Log.insertMany(processedLogs, { ordered: false });
 
         res.status(201).json({ message: 'Logs ingested successfully', count: processedLogs.length });
     } catch (error) {
