@@ -30,6 +30,8 @@ if [[ "${RESET_DB:-}" = "1" || "${RESET_DB:-}" = "true" ]]; then
   echo "Resetting MongoDB (logs collection)..."
   npm run reset:db
 fi
+
+
 # Pipe output to log file
 npm start > "$ROOT_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
@@ -48,7 +50,10 @@ echo "Starting Log Collector Agent..."
 cd "$ROOT_DIR/agent"
 npm install
 touch access.log app.log
-node collector.js > "$ROOT_DIR/agent.log" 2>&1 &
+if [[ "${RESET_OFFSETS:-}" = "1" || "${RESET_OFFSETS:-}" = "true" ]]; then
+  echo "Resetting agent offsets..."
+fi
+RESET_OFFSETS="${RESET_OFFSETS:-0}" node collector.js > "$ROOT_DIR/agent.log" 2>&1 &
 AGENT_PID=$!
 cd "$ROOT_DIR"
 
