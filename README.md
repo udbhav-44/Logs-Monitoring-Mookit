@@ -1,65 +1,72 @@
 # Centralized Log Monitoring System
 
-A scalable, full-stack platform for monitoring logs from distributed applications and web servers (Nginx). The system provides real-time ingestion, search capabilities, and analytics dashboards to track traffic, user activity, and security anomalies.
+A full-stack platform for ingesting, parsing, and exploring logs from distributed applications and web servers (Nginx). The system provides real-time ingestion, fast search, and analytics dashboards to track traffic, user activity, and anomalies.
 
-## Features
+## Highlights
 
--   **Real-time Log Ingestion**: Lightweight agents tail logs from multiple VMs and ship them to the central server.
--   **Parsing Engine**: Automatically parses Nginx combined logs and custom JSON application logs.
--   **Interactive Dashboard**:
-    -   **Overview**: Visual traffic trends and status code distribution. Charts are clickable to open filtered views in the Log Explorer.
-    -   **Log Explorer**: Full-text search with filtering by IP, UID, status, time, source, app, and VM. Clicking a row opens a detail modal; clicking status/IP/UID chips refines the search.
-    -   **User Activity**: Trace a specific user's actions across the system using their UID, with quick links to related logs and IP usage.
-    -   **Security**: Auto-detect suspicious IP addresses (brute-force/scanning patterns) with one-click drill-down to related logs.
--   **Multi-VM Support**: Designed to aggregate logs from multiple sources.
+- **Real-time ingestion**: Lightweight agents tail logs and stream them to the backend.
+- **Strict format parsing**: Accepts only well-formed nginx combined logs and your app log format.
+- **Fast analytics**: Precomputed overview stats reduce UI lag.
+- **Explorer + filters**: Full-text search plus structured filters (IP, UID, course, status, source, app, VM, time range).
+- **Multi-VM ready**: Agent is portable and configurable per VM.
 
-## Technology Stack
+## Architecture
 
--   **Frontend**: React, Vite, Tailwind CSS, Recharts
--   **Backend**: Node.js, Express
--   **Database**: MongoDB via Mongoose (indexes on timestamp, UID, IP, source)
--   **Agent**: Node.js, Chokidar (for efficient file watching)
-
-## Prerequisites
-
--   **Node.js**: v20.19+ or v22.12+ recommended (works with Homebrew `node@22`)
--   **NPM**: v9 or higher
--   **MongoDB**: running locally or reachable at your `MONGO_URI` (default `mongodb://localhost:27017/log-monitoring`)
+- **Agent** (Node.js + Chokidar): watches log files/folders, filters, batches, and sends logs.
+- **Backend** (Node.js + Express + MongoDB): parses, stores, and serves analytics/search APIs.
+- **Frontend** (React + Vite + Recharts): dashboard and log explorer.
 
 ## Quick Start
 
-1.  **Clone the repository** (if you haven't already).
-2.  **Make the start script executable**:
-    ```bash
-    chmod +x start-all.sh
-    ```
-3.  **Run the application** (ensure MongoDB is running):
-    ```bash
-    ./start-all.sh
-    ```
-    This script automatically:
-    -   Installs dependencies for Backend, Frontend, and Agent.
-    -   Starts the Backend API on `http://localhost:5001`.
-    -   Starts the Frontend Dashboard on `http://localhost:5173`.
-    -   Starts the Log Agent (watching `./agent/access.log`).
+1. **Make the start script executable**
+   ```bash
+   chmod +x start-all.sh
+   ```
+2. **Run the stack** (ensure MongoDB is running)
+   ```bash
+   ./start-all.sh
+   ```
+   This script:
+   - Installs dependencies (backend, frontend, agent)
+   - Starts backend API on `http://localhost:5002`
+   - Starts frontend on `http://localhost:5173`
+   - Starts the agent
+3. **Open the dashboard**
+   ```text
+   http://localhost:5173
+   ```
 
-4.  **Open the Dashboard**: Go to [http://localhost:5173](http://localhost:5173).
-
-Optional: **Clean start (reset logs)** before launching:
+Optional clean start:
 ```bash
 RESET_DB=1 ./start-all.sh
 ```
+
+## Log Formats Accepted (Strict)
+
+Only these two formats are ingested. Everything else is rejected at the agent.
+
+**1) Nginx combined**
+```
+49.37.223.210 - - [28/Jan/2026:00:00:10 +0000] "POST /studentapi/see908q32526/lectures/12/analytics HTTP/1.1" 200 63 "https://..." "Mozilla/5.0 ..."
+```
+
+**2) App log format**
+```
+[2026-01-22T00:04:43.874Z]  POST  200  /quizzes/take/1  62146  ee966q32526  174.230.185.2  [155.586 ms]  Mozilla/5.0 ...
+```
+Where:
+- `uid` = `62146`
+- `course` = `ee966q32526`
 
 ## Project Structure
 
 ```
 ├── agent/              # Log Collector Agent
 │   ├── collector.js    # Main agent logic
-│   ├── access.log      # Dummy log file for testing
 │   └── .env            # Agent configuration
 ├── backend/            # Central API & Parsing Logic
 │   ├── server.js       # Entry point
-│   ├── models/         # Database models (NeDB)
+│   ├── models/         # MongoDB models
 │   └── controllers/    # API Controllers (Ingest, Analytics)
 ├── frontend/           # React Dashboard
 │   ├── src/pages/      # Dashboard Views (Overview, Explorer, etc.)
@@ -69,53 +76,92 @@ RESET_DB=1 ./start-all.sh
 
 ## Configuration
 
-### Ports
--   **Backend**: 5002 (Configurable in `backend/.env`, binds to `HOST` env, default `0.0.0.0`)
--   **Frontend**: 5173 (Default Vite port)
--   **Frontend API target**: If not using the default hostname, set `VITE_API_BASE_URL` in `frontend/.env` (otherwise it falls back to `window.location.hostname:5002`)
-
 ### Backend environment (`backend/.env`)
 ```
 PORT=5002
 HOST=0.0.0.0
 MONGO_URI=mongodb://localhost:27017/log-monitoring
+JSON_BODY_LIMIT=10mb
+OVERVIEW_PRECOMPUTE_MS=5000
+MONGO_MAX_POOL_SIZE=50
+MONGO_MIN_POOL_SIZE=5
 ```
-If your MongoDB uses authentication or a different host, update `MONGO_URI` accordingly.
 
-### Multi-VM Setup
-To monitor logs from other Virtual Machines:
+### Frontend environment (`frontend/.env`)
+```
+VITE_API_BASE_URL=http://<BACKEND_HOST>:5002
+VITE_DASHBOARD_REFRESH_MS=5000
+```
 
-1.  Copy the `agent/` folder to the target VM.
-2.  Edit `agent/.env` on that VM:
-    ```ini
-    # Point this to your central backend IP
-    BACKEND_URL=http://<YOUR_BACKEND_IP>:5001/api/ingest
-    
-    # Unique ID for this VM
-    VM_ID=web-server-02
-    
-    # Absolute paths to logs you want to watch
-    LOG_FILES=/var/log/nginx/access.log,/var/log/app.log
-    ```
-3.  Run the agent: `node collector.js`
+### Agent environment (`agent/.env`)
+```
+BACKEND_URL=http://<BACKEND_HOST>:5002/api/ingest
+LOG_FILES=/var/log/nginx/access.log,/var/log/my-app.log
+APP_NAME=Central-VM
+VM_ID=vm-01
+BATCH_SIZE=1000
+FLUSH_INTERVAL_MS=500
+TAIL_FROM_END=0
+USE_POLLING=0
 
-## Testing the System
+# Resume offsets (restart-safe)
+STATE_FILE=.offsets.json
+RESET_OFFSETS=0
+READ_NEW_FILES_FROM_START=1
 
-The `agent` folder contains a dummy `access.log` file that is being watched by default. You can manually append lines to this file to see them appear in the dashboard instantly.
+# Filter nginx routes
+NGINX_REJECT_PREFIXES=/studentapi,/api
 
-**Example Nginx Log:**
+# Payload sizing / compression
+MAX_BATCH_BYTES=1000000
+USE_GZIP=1
+```
+
+## Log Explorer
+
+- **Course filter**: matches `parsedData.course` (supports partial matches).
+- **Course column**: visible in the table and clickable for quick filtering.
+- **Full-text search**: searches URL/message/raw text.
+
+## Multi-VM Setup
+
+1. Copy the `agent/` folder to each VM.
+2. Set `BACKEND_URL`, `VM_ID`, `APP_NAME`, and `LOG_FILES` on each VM.
+3. Start the agent:
+   ```bash
+   node collector.js
+   ```
+
+## Reset Everything (DB + Offsets)
+
+To clear all logs and re-ingest from scratch:
+
 ```bash
-echo '192.168.1.10 - user_123 [17/Jan/2026:20:00:00 +0530] "GET /api/data HTTP/1.1" 200 1024 "-" "Mozilla/5.0"' >> agent/access.log
+node backend/scripts/reset-db.js
+RESET_OFFSETS=1 node agent/collector.js
 ```
 
-**Example App Log (JSON):**
-```bash
-echo '{"timestamp": "2026-01-17T20:05:00Z", "level": "error", "message": "Database connection failed", "ip": "10.0.0.5"}' >> agent/app.log
-```
+## Performance / Production Notes
+
+**Backend**
+- Uses precomputed overview stats on a timer (`OVERVIEW_PRECOMPUTE_MS`).
+- Uses MongoDB connection pooling (`MONGO_MAX_POOL_SIZE`, `MONGO_MIN_POOL_SIZE`).
+- Accepts larger JSON payloads (`JSON_BODY_LIMIT`).
+
+**Agent**
+- Byte-capped batching (`MAX_BATCH_BYTES`) to avoid oversized requests.
+- Optional gzip (`USE_GZIP=1`) to reduce payload size.
+- Offset tracking to resume without re-ingesting old logs.
+
+**Recommended production practices**
+- Run backend with a process manager (e.g., PM2 cluster mode).
+- Put MongoDB on dedicated SSD/NVMe storage.
+- Tune OS limits (ulimit, TCP backlog) for high ingest.
 
 ## Troubleshooting
 
--   **"Error loading data"**: Ensure the backend is running on port 5001. Check `backend.log` if created.
--   **MongoDB connection failed**: Verify `MONGO_URI` in `backend/.env` and that `mongod` is running and reachable.
--   **Agent not sending logs**: The agent reads the full file once on startup, then tails new lines. Restart the agent after changing parser logic.
--   **Port 5001 in use**: Update `PORT` in `backend/.env`, `BACKEND_URL` in `agent/.env`, and the API URLs in `frontend/src/pages/*.jsx`.
+- **PayloadTooLargeError**: increase `JSON_BODY_LIMIT` or reduce `BATCH_SIZE` / `MAX_BATCH_BYTES`.
+- **UI not updating quickly**: lower `OVERVIEW_PRECOMPUTE_MS` and `VITE_DASHBOARD_REFRESH_MS`.
+- **Agent not sending logs**: verify `BACKEND_URL`, file paths, and `agent.log`.
+- **MongoDB connection failed**: verify `MONGO_URI` and that `mongod` is running.
+- **Port in use**: update `PORT` in `backend/.env` and `VITE_API_BASE_URL` in `frontend/.env`.

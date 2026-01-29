@@ -1,47 +1,82 @@
-# Agent Deployment Guide
+# Log Collector Agent
 
-This guide explains how to install the Log Collector Agent on multiple Virtual Machines (VMs) to send logs to your central dashboard.
+This agent tails log files or folders, filters non-matching lines, batches them, and sends them to the central backend.
 
-## 1. Prepare the Agent Package
-On your main machine (where the backend is running):
-1.  Run the packaging script (created for you, see below in chat):
-    ```bash
-    ./package-agent.sh
-    ```
-    This creates `agent-dist.zip`.
+## Accepted Log Formats (Strict)
 
-## 2. Deploy to Remote VM
-1.  Copy `agent-dist.zip` to your target VM (using `scp` or any file transfer tool):
-    ```bash
-    scp agent-dist.zip user@remote-vm-ip:/home/user/
-    ```
-2.  SSH into the remote VM.
+Only these formats are ingested. Everything else is rejected.
 
-## 3. Install & Configure on Remote VM
-1.  Unzip the package:
-    ```bash
-    unzip agent-dist.zip -d mookit-agent
-    cd mookit-agent
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  **Critical Step**: Edit the configuration:
-    ```bash
-    nano .env
-    ```
-    -   **BACKEND_URL**: Change `localhost` to the Public IP or Hostname of your central server.
-        -   Example: `http://192.168.1.50:5001/api/ingest`
-    -   **VM_ID**: Give this VM a unique name (e.g., `web-02`, `db-01`).
-    -   **LOG_FILES**: Comma-separated absolute paths to the logs you want to watch.
-        -   Example: `/var/log/nginx/access.log,/var/log/my-app.log`
-
-## 4. Start the Agent
-Run the agent in the background:
-```bash
-node collector.js &
+**Nginx combined**
 ```
-(Or use a process manager like `pm2` for production: `pm2 start collector.js --name log-agent`)
+49.37.223.210 - - [28/Jan/2026:00:00:10 +0000] "POST /studentapi/see908q32526/lectures/12/analytics HTTP/1.1" 200 63 "https://..." "Mozilla/5.0 ..."
+```
 
-The agent will read the full file once on startup, then continue tailing new log lines to your central dashboard.
+**App log format**
+```
+[2026-01-22T00:04:43.874Z]  POST  200  /quizzes/take/1  62146  ee966q32526  174.230.185.2  [155.586 ms]  Mozilla/5.0 ...
+```
+Where `ee966q32526` is the course code.
+
+## Install
+
+```bash
+npm install
+```
+
+## Configuration (`agent/.env`)
+
+```
+BACKEND_URL=http://<BACKEND_HOST>:5002/api/ingest
+LOG_FILES=/var/log/nginx/access.log,/var/log/my-app.log
+APP_NAME=Central-VM
+VM_ID=vm-01
+BATCH_SIZE=1000
+FLUSH_INTERVAL_MS=500
+TAIL_FROM_END=0
+USE_POLLING=0
+
+# Resume offsets (restart-safe)
+STATE_FILE=.offsets.json
+RESET_OFFSETS=0
+READ_NEW_FILES_FROM_START=1
+
+# Filter nginx routes
+NGINX_REJECT_PREFIXES=/studentapi,/api
+
+# Payload sizing / compression
+MAX_BATCH_BYTES=1000000
+USE_GZIP=1
+```
+
+### Folder watch
+
+`LOG_FILES` can include folders. Folder watches are **non-recursive**. New files appearing in that folder are detected and tailed.
+
+```
+LOG_FILES=/var/log/nginx,/var/log/my-app
+```
+
+## Start
+
+```bash
+node collector.js
+```
+
+## Resume Behavior (Offsets)
+
+- The agent saves per-file offsets in `.offsets.json`.
+- On restart, it resumes from the last saved byte position.
+- Rotated/new files (inode change) start from the beginning.
+
+Reset offsets:
+```bash
+RESET_OFFSETS=1 node collector.js
+```
+
+## Production Tips
+
+- Use PM2:
+  ```bash
+  pm2 start collector.js --name log-agent
+  ```
+- For high ingest, keep `MAX_BATCH_BYTES` conservative and enable gzip.
