@@ -25,6 +25,7 @@ const logSchema = new mongoose.Schema({
     method: String,
     url: String,
     status: Number,
+    course: String,
     responseSize: Number,
     referrer: String,
     userAgent: String,
@@ -38,6 +39,7 @@ logSchema.index({ 'parsedData.uid': 1, timestamp: -1 });
 logSchema.index({ 'parsedData.ip': 1, timestamp: -1 });
 logSchema.index({ sourceType: 1, timestamp: -1 });
 logSchema.index({ 'parsedData.status': 1, timestamp: -1 });
+logSchema.index({ 'parsedData.course': 1, timestamp: -1 });
 logSchema.index({ 'appInfo.name': 1, timestamp: -1 });
 logSchema.index({ 'appInfo.vmId': 1, timestamp: -1 });
 logSchema.index(

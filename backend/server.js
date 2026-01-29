@@ -10,10 +10,12 @@ connectDB();
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+const jsonLimit = process.env.JSON_BODY_LIMIT || '10mb';
+app.use(express.json({ limit: jsonLimit, inflate: true }));
 
 const ingestRoutes = require('./routes/ingestRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const { startOverviewPrecompute } = require('./controllers/analyticsController');
 
 app.use('/api/ingest', ingestRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -29,4 +31,5 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
+    startOverviewPrecompute();
 });

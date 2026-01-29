@@ -3,10 +3,15 @@ const Log = require('../models/Log');
 const HOURS_24 = 24 * 60 * 60 * 1000;
 const DAYS_7 = 7 * 24 * 60 * 60 * 1000;
 const DAYS_30 = 30 * 24 * 60 * 60 * 1000;
+const toNumber = (value, fallback) => {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? fallback : parsed;
+};
+
 const CACHE_TTL_MS = {
-    overview: 15000,
-    suspicious: 15000,
-    applications: 30000
+    overview: toNumber(process.env.OVERVIEW_CACHE_TTL_MS, 5000),
+    suspicious: toNumber(process.env.SUSPICIOUS_CACHE_TTL_MS, 15000),
+    applications: toNumber(process.env.APPLICATIONS_CACHE_TTL_MS, 30000)
 };
 
 const cache = new Map();
@@ -23,6 +28,17 @@ const getCached = (key) => {
 
 const setCached = (key, value, ttlMs) => {
     cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+};
+
+const PRECOMPUTE_RANGES = ['24h', '7d', '30d', 'all'];
+const OVERVIEW_PRECOMPUTE_MS = toNumber(process.env.OVERVIEW_PRECOMPUTE_MS, 5000);
+const precomputedOverview = new Map();
+let overviewPrecomputeTimer = null;
+let overviewPrecomputeInFlight = false;
+
+const getOverviewRangeKey = (params = {}) => {
+    const range = String(params.range || '24h').toLowerCase();
+    return PRECOMPUTE_RANGES.includes(range) ? range : null;
 };
 
 const buildCacheKey = (prefix, params = {}) => {
@@ -84,8 +100,13 @@ const buildQuery = (params = {}) => {
         if (end) query.timestamp.$lte = end;
     }
 
+    const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     if (params.ip) query['parsedData.ip'] = params.ip;
     if (params.uid) query['parsedData.uid'] = params.uid;
+    if (params.course) {
+        query['parsedData.course'] = { $regex: escapeRegex(params.course), $options: 'i' };
+    }
     if (params.sourceType) query.sourceType = params.sourceType;
     if (params.app) query['appInfo.name'] = params.app;
     if (params.vmId) query['appInfo.vmId'] = params.vmId;
@@ -99,6 +120,177 @@ const buildQuery = (params = {}) => {
     }
 
     return query;
+};
+
+const computeOverviewPayload = async (params = {}) => {
+    const { start: windowStart, end: windowEnd } = getRangeWindow(params, '24h');
+    const windowMatch = buildTimeMatch(windowStart, windowEnd);
+    const { unit: bucketUnit, format: bucketFormat } = resolveBucket(windowStart, windowEnd);
+    const now = Date.now();
+    const last24h = new Date(now - HOURS_24);
+    const last7d = new Date(now - DAYS_7);
+    const windowCountPromise = Object.keys(windowMatch).length
+        ? Log.countDocuments(windowMatch)
+        : Log.estimatedDocumentCount();
+
+    const [overall, last7dCount, last24hCount, windowCountRaw, last24hAgg, applications] =
+        await Promise.all([
+            Log.estimatedDocumentCount(),
+            Log.countDocuments({ timestamp: { $gte: last7d } }),
+            Log.countDocuments({ timestamp: { $gte: last24h } }),
+            windowCountPromise,
+            Log.aggregate([
+                ...(Object.keys(windowMatch).length ? [{ $match: windowMatch }] : []),
+                {
+                    $facet: {
+                        statusDist: [
+                            { $match: { 'parsedData.status': { $exists: true } } },
+                            { $group: { _id: '$parsedData.status', count: { $sum: 1 } } },
+                            { $sort: { _id: 1 } }
+                        ],
+                        traffic: [
+                            {
+                                $group: {
+                                    _id: { $dateToString: { format: bucketFormat, date: '$timestamp' } },
+                                    count: { $sum: 1 }
+                                }
+                            },
+                            { $sort: { _id: 1 } }
+                        ],
+                        errorTrend: [
+                            { $match: { 'parsedData.status': { $gte: 400 } } },
+                            {
+                                $group: {
+                                    _id: { $dateToString: { format: bucketFormat, date: '$timestamp' } },
+                                    count: { $sum: 1 }
+                                }
+                            },
+                            { $sort: { _id: 1 } }
+                        ],
+                        topEndpoints: [
+                            { $addFields: { endpoint: { $ifNull: ['$parsedData.url', '$parsedData.message'] } } },
+                            {
+                                $group: {
+                                    _id: '$endpoint',
+                                    count: { $sum: 1 },
+                                    errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                                    lastSeen: { $max: '$timestamp' }
+                                }
+                            },
+                            { $sort: { count: -1 } },
+                            { $limit: 5 }
+                        ],
+                        topIps: [
+                            {
+                                $group: {
+                                    _id: '$parsedData.ip',
+                                    count: { $sum: 1 },
+                                    errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                                    lastSeen: { $max: '$timestamp' }
+                                }
+                            },
+                            { $sort: { count: -1 } },
+                            { $limit: 5 }
+                        ],
+                        topUids: [
+                            {
+                                $group: {
+                                    _id: '$parsedData.uid',
+                                    count: { $sum: 1 },
+                                    errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                                    lastSeen: { $max: '$timestamp' }
+                                }
+                            },
+                            { $sort: { count: -1 } },
+                            { $limit: 5 }
+                        ]
+                    }
+                }
+            ]).allowDiskUse(true),
+            Log.aggregate([
+                ...(Object.keys(windowMatch).length ? [{ $match: windowMatch }] : []),
+                {
+                    $group: {
+                        _id: '$appInfo.name',
+                        total: { $sum: 1 },
+                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+                        vmIds: { $addToSet: '$appInfo.vmId' },
+                        nginxCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'nginx'] }, 1, 0] } },
+                        appCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'app'] }, 1, 0] } },
+                        dbCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'db'] }, 1, 0] } }
+                    }
+                }
+            ]).allowDiskUse(true)
+        ]);
+
+    const facet = last24hAgg[0] || {};
+    const statusDist = facet.statusDist || [];
+    const traffic = facet.traffic || [];
+    const errorTrend = facet.errorTrend || [];
+    const topEndpoints = facet.topEndpoints || [];
+    const topIps = facet.topIps || [];
+    const topUids = facet.topUids || [];
+
+    const statusBuckets = { ok2xx: 0, redirect3xx: 0, client4xx: 0, server5xx: 0 };
+    statusDist.forEach(item => {
+        if (item._id >= 500) statusBuckets.server5xx += item.count;
+        else if (item._id >= 400) statusBuckets.client4xx += item.count;
+        else if (item._id >= 300) statusBuckets.redirect3xx += item.count;
+        else if (item._id >= 200) statusBuckets.ok2xx += item.count;
+    });
+
+    const appView = applications.map(app => ({
+        app: app._id || 'unknown-app',
+        total: app.total,
+        errors: app.errors,
+        vmIds: app.vmIds,
+        errorRate: app.total ? Number(((app.errors / app.total) * 100).toFixed(1)) : 0,
+        sources: {
+            nginx: app.nginxCount || 0,
+            app: app.appCount || 0,
+            db: app.dbCount || 0
+        }
+    })).sort((a, b) => b.total - a.total);
+
+    const windowCount = Object.keys(windowMatch).length ? windowCountRaw : overall;
+    return {
+        totals: {
+            overall,
+            last7d: last7dCount,
+            last24h: last24hCount,
+            window: windowCount
+        },
+        statusDist: statusDist.map(s => ({ code: s._id, count: s.count })),
+        statusBuckets,
+        traffic: traffic.map(t => ({ bucket: t._id, count: t.count })),
+        errorTrend: errorTrend.map(t => ({ bucket: t._id, count: t.count })),
+        topEndpoints: topEndpoints.map(e => ({ endpoint: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
+        topIps: topIps.map(e => ({ ip: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
+        topUids: topUids.map(e => ({ uid: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
+        applications: appView,
+        bucketUnit,
+        range: { start: windowStart, end: windowEnd }
+    };
+};
+
+const startOverviewPrecompute = () => {
+    if (overviewPrecomputeTimer || OVERVIEW_PRECOMPUTE_MS <= 0) return;
+    const run = async () => {
+        if (overviewPrecomputeInFlight) return;
+        overviewPrecomputeInFlight = true;
+        try {
+            for (const range of PRECOMPUTE_RANGES) {
+                const payload = await computeOverviewPayload({ range });
+                precomputedOverview.set(range, { payload, updatedAt: Date.now() });
+            }
+        } catch (error) {
+            console.error('Overview precompute failed:', error.message);
+        } finally {
+            overviewPrecomputeInFlight = false;
+        }
+    };
+    run();
+    overviewPrecomputeTimer = setInterval(run, OVERVIEW_PRECOMPUTE_MS);
 };
 
 // @desc    Get UID Directory
@@ -140,153 +332,17 @@ const getOverviewStats = async (req, res) => {
         const cacheKey = buildCacheKey('overview', req.query);
         const cached = getCached(cacheKey);
         if (cached) return res.json(cached);
+        const hasCustomWindow = Boolean(req.query.start || req.query.end);
+        const rangeKey = getOverviewRangeKey(req.query);
+        if (!hasCustomWindow && rangeKey) {
+            const precomputed = precomputedOverview.get(rangeKey);
+            if (precomputed?.payload) {
+                setCached(cacheKey, precomputed.payload, CACHE_TTL_MS.overview);
+                return res.json(precomputed.payload);
+            }
+        }
 
-        const { start: windowStart, end: windowEnd } = getRangeWindow(req.query, '24h');
-        const windowMatch = buildTimeMatch(windowStart, windowEnd);
-        const { unit: bucketUnit, format: bucketFormat } = resolveBucket(windowStart, windowEnd);
-        const now = Date.now();
-        const last24h = new Date(now - HOURS_24);
-        const last7d = new Date(now - DAYS_7);
-        const windowCountPromise = Object.keys(windowMatch).length
-            ? Log.countDocuments(windowMatch)
-            : Log.estimatedDocumentCount();
-
-        const [overall, last7dCount, last24hCount, windowCountRaw, last24hAgg, applications] =
-            await Promise.all([
-                Log.estimatedDocumentCount(),
-                Log.countDocuments({ timestamp: { $gte: last7d } }),
-                Log.countDocuments({ timestamp: { $gte: last24h } }),
-                windowCountPromise,
-                Log.aggregate([
-                    ...(Object.keys(windowMatch).length ? [{ $match: windowMatch }] : []),
-                    {
-                        $facet: {
-                            statusDist: [
-                                { $match: { 'parsedData.status': { $exists: true } } },
-                                { $group: { _id: '$parsedData.status', count: { $sum: 1 } } },
-                                { $sort: { _id: 1 } }
-                            ],
-                            traffic: [
-                                {
-                                    $group: {
-                                        _id: { $dateToString: { format: bucketFormat, date: '$timestamp' } },
-                                        count: { $sum: 1 }
-                                    }
-                                },
-                                { $sort: { _id: 1 } }
-                            ],
-                            errorTrend: [
-                                { $match: { 'parsedData.status': { $gte: 400 } } },
-                                {
-                                    $group: {
-                                        _id: { $dateToString: { format: bucketFormat, date: '$timestamp' } },
-                                        count: { $sum: 1 }
-                                    }
-                                },
-                                { $sort: { _id: 1 } }
-                            ],
-                            topEndpoints: [
-                                { $addFields: { endpoint: { $ifNull: ['$parsedData.url', '$parsedData.message'] } } },
-                                {
-                                    $group: {
-                                        _id: '$endpoint',
-                                        count: { $sum: 1 },
-                                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                                        lastSeen: { $max: '$timestamp' }
-                                    }
-                                },
-                                { $sort: { count: -1 } },
-                                { $limit: 5 }
-                            ],
-                            topIps: [
-                                {
-                                    $group: {
-                                        _id: '$parsedData.ip',
-                                        count: { $sum: 1 },
-                                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                                        lastSeen: { $max: '$timestamp' }
-                                    }
-                                },
-                                { $sort: { count: -1 } },
-                                { $limit: 5 }
-                            ],
-                            topUids: [
-                                {
-                                    $group: {
-                                        _id: '$parsedData.uid',
-                                        count: { $sum: 1 },
-                                        errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                                        lastSeen: { $max: '$timestamp' }
-                                    }
-                                },
-                                { $sort: { count: -1 } },
-                                { $limit: 5 }
-                            ]
-                        }
-                    }
-                ]),
-                Log.aggregate([
-                    ...(Object.keys(windowMatch).length ? [{ $match: windowMatch }] : []),
-                    {
-                        $group: {
-                            _id: '$appInfo.name',
-                            total: { $sum: 1 },
-                            errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                            vmIds: { $addToSet: '$appInfo.vmId' },
-                            sources: { $push: '$sourceType' }
-                        }
-                    }
-                ])
-            ]);
-
-        const facet = last24hAgg[0] || {};
-        const statusDist = facet.statusDist || [];
-        const traffic = facet.traffic || [];
-        const errorTrend = facet.errorTrend || [];
-        const topEndpoints = facet.topEndpoints || [];
-        const topIps = facet.topIps || [];
-        const topUids = facet.topUids || [];
-
-        const statusBuckets = { ok2xx: 0, redirect3xx: 0, client4xx: 0, server5xx: 0 };
-        statusDist.forEach(item => {
-            if (item._id >= 500) statusBuckets.server5xx += item.count;
-            else if (item._id >= 400) statusBuckets.client4xx += item.count;
-            else if (item._id >= 300) statusBuckets.redirect3xx += item.count;
-            else if (item._id >= 200) statusBuckets.ok2xx += item.count;
-        });
-
-        const appView = applications.map(app => ({
-            app: app._id || 'unknown-app',
-            total: app.total,
-            errors: app.errors,
-            vmIds: app.vmIds,
-            errorRate: app.total ? Number(((app.errors / app.total) * 100).toFixed(1)) : 0,
-            sources: app.sources.reduce((acc, src) => {
-                acc[src] = (acc[src] || 0) + 1;
-                return acc;
-            }, {})
-        })).sort((a, b) => b.total - a.total);
-
-        const windowCount = Object.keys(windowMatch).length ? windowCountRaw : overall;
-        const payload = {
-            totals: {
-                overall,
-                last7d: last7dCount,
-                last24h: last24hCount,
-                window: windowCount
-            },
-            statusDist: statusDist.map(s => ({ code: s._id, count: s.count })),
-            statusBuckets,
-            traffic: traffic.map(t => ({ bucket: t._id, count: t.count })),
-            errorTrend: errorTrend.map(t => ({ bucket: t._id, count: t.count })),
-            topEndpoints: topEndpoints.map(e => ({ endpoint: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
-            topIps: topIps.map(e => ({ ip: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
-            topUids: topUids.map(e => ({ uid: e._id, count: e.count, errors: e.errors, lastSeen: e.lastSeen })),
-            applications: appView,
-            bucketUnit,
-            range: { start: windowStart, end: windowEnd }
-        };
-
+        const payload = await computeOverviewPayload(req.query);
         setCached(cacheKey, payload, CACHE_TTL_MS.overview);
         res.json(payload);
     } catch (error) {
@@ -519,11 +575,13 @@ const getApplicationOverview = async (req, res) => {
                 total: { $sum: 1 },
                 errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
                 vmIds: { $addToSet: '$appInfo.vmId' },
-                sources: { $push: '$sourceType' }
+                nginxCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'nginx'] }, 1, 0] } },
+                appCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'app'] }, 1, 0] } },
+                dbCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'db'] }, 1, 0] } }
             }
         });
 
-        const applications = await Log.aggregate(pipeline);
+        const applications = await Log.aggregate(pipeline).allowDiskUse(true);
 
         const appView = applications.map(app => ({
             app: app._id || 'unknown-app',
@@ -531,10 +589,11 @@ const getApplicationOverview = async (req, res) => {
             errors: app.errors,
             vmIds: app.vmIds,
             errorRate: app.total ? Number(((app.errors / app.total) * 100).toFixed(1)) : 0,
-            sources: app.sources.reduce((acc, src) => {
-                acc[src] = (acc[src] || 0) + 1;
-                return acc;
-            }, {})
+            sources: {
+                nginx: app.nginxCount || 0,
+                app: app.appCount || 0,
+                db: app.dbCount || 0
+            }
         })).sort((a, b) => b.total - a.total);
 
         const payload = { applications: appView, range: { start: windowStart, end: windowEnd } };
@@ -547,6 +606,7 @@ const getApplicationOverview = async (req, res) => {
 
 module.exports = {
     getOverviewStats,
+    startOverviewPrecompute,
     searchLogs,
     getUserActivity,
     getSuspiciousActivity,
