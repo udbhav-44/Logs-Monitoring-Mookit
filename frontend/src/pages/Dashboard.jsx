@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Activity, AlertTriangle, FileText, Shield } from 'lucide-react';
@@ -25,12 +25,16 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [range, setRange] = useState(() => getStoredRange('30d'));
   const hasUserSetRange = useRef(false);
+  const refreshInFlight = useRef(false);
   const navigate = useNavigate();
 
   const rangeLabel = rangeOptions.find((option) => option.value === range)?.label || 'Last 24h';
 
-  const load = async (selectedRange = range) => {
-    setLoading(true);
+  const load = async (selectedRange = range, options = {}) => {
+    const { silent = false } = options;
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    if (!silent && !stats) setLoading(true);
     setError('');
     try {
       const data = await fetchOverview({ range: selectedRange });
@@ -39,12 +43,23 @@ const Dashboard = () => {
       console.error(err);
       setError('Unable to load analytics right now. Please verify the backend is running on the configured port.');
     } finally {
-      setLoading(false);
+      if (!silent && !stats) setLoading(false);
+      refreshInFlight.current = false;
     }
   };
 
   useEffect(() => {
     load(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
+
+  useEffect(() => {
+    const refreshMs = Number(import.meta.env.VITE_DASHBOARD_REFRESH_MS) || 5000;
+    if (Number.isNaN(refreshMs) || refreshMs <= 0) return undefined;
+    const interval = setInterval(() => {
+      load(range, { silent: true });
+    }, refreshMs);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range]);
 
@@ -79,33 +94,51 @@ const Dashboard = () => {
     goToLogs({ start, end });
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (error || !stats) return <div className="p-8 text-red-600">{error || 'Error loading data'}</div>;
+  const safeStats = stats || {
+    totals: {},
+    statusBuckets: {},
+    traffic: [],
+    errorTrend: [],
+    statusDist: [],
+    applications: []
+  };
 
-  const statusDist = (stats.statusDist || []).filter(item => item.code !== null && item.code !== undefined);
-  const applications = stats.applications || [];
-  const rangeCount = stats.totals.window ?? stats.totals.last24h;
-  const cards = [
-    { title: 'Total Logs', value: stats.totals.overall, icon: <FileText className="text-blue-600" />, color: 'bg-blue-50' },
+  const statusDist = useMemo(
+    () => (safeStats.statusDist || []).filter(item => item.code !== null && item.code !== undefined),
+    [safeStats.statusDist]
+  );
+  const applications = useMemo(() => safeStats.applications || [], [safeStats.applications]);
+  const rangeCount = useMemo(
+    () => (safeStats.totals?.window ?? safeStats.totals?.last24h),
+    [safeStats.totals]
+  );
+  const cards = useMemo(() => ([
+    { title: 'Total Logs', value: safeStats.totals.overall, icon: <FileText className="text-blue-600" />, color: 'bg-blue-50' },
     { title: range === '24h' ? 'Last 24h' : `Range (${rangeLabel})`, value: rangeCount, icon: <Activity className="text-indigo-600" />, color: 'bg-indigo-50' },
-    { title: 'Client Errors (4xx)', value: stats.statusBuckets.client4xx, icon: <AlertTriangle className="text-orange-600" />, color: 'bg-orange-50' },
-    { title: 'Server Errors (5xx)', value: stats.statusBuckets.server5xx, icon: <Shield className="text-red-600" />, color: 'bg-red-50' },
-  ];
+    { title: 'Client Errors (4xx)', value: safeStats.statusBuckets.client4xx, icon: <AlertTriangle className="text-orange-600" />, color: 'bg-orange-50' },
+    { title: 'Server Errors (5xx)', value: safeStats.statusBuckets.server5xx, icon: <Shield className="text-red-600" />, color: 'bg-red-50' },
+  ]), [range, rangeLabel, rangeCount, safeStats.statusBuckets, safeStats.totals]);
 
-  const trafficMap = new Map();
-  (stats.traffic || []).forEach(item => trafficMap.set(item.bucket, { bucket: item.bucket, requests: item.count, errors: 0 }));
-  (stats.errorTrend || []).forEach(item => {
-    const existing = trafficMap.get(item.bucket) || { bucket: item.bucket, requests: 0, errors: 0 };
-    existing.errors = item.count;
-    trafficMap.set(item.bucket, existing);
-  });
-  const trafficData = Array.from(trafficMap.values()).sort((a, b) => (a.bucket > b.bucket ? 1 : -1));
-  const bucketUnit = stats.bucketUnit || 'hour';
-  const formatBucket = (bucket) => {
+  const trafficData = useMemo(() => {
+    const trafficMap = new Map();
+    (safeStats.traffic || []).forEach(item => trafficMap.set(item.bucket, { bucket: item.bucket, requests: item.count, errors: 0 }));
+    (safeStats.errorTrend || []).forEach(item => {
+      const existing = trafficMap.get(item.bucket) || { bucket: item.bucket, requests: 0, errors: 0 };
+      existing.errors = item.count;
+      trafficMap.set(item.bucket, existing);
+    });
+    return Array.from(trafficMap.values()).sort((a, b) => (a.bucket > b.bucket ? 1 : -1));
+  }, [safeStats.traffic, safeStats.errorTrend]);
+
+  const bucketUnit = useMemo(() => safeStats.bucketUnit || 'hour', [safeStats.bucketUnit]);
+  const formatBucket = useCallback((bucket) => {
     if (!bucket) return '';
     if (bucketUnit === 'day') return bucket;
     return bucket.replace('T', ' ').slice(5);
-  };
+  }, [bucketUnit]);
+
+  if (loading) return <div className="p-8">Loading...</div>;
+  if (error || !stats) return <div className="p-8 text-red-600">{error || 'Error loading data'}</div>;
 
   return (
     <div className="space-y-8">

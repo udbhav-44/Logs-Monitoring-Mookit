@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { searchLogs } from '../lib/api';
@@ -17,6 +17,7 @@ const LogExplorer = () => {
   const [filters, setFilters] = useState({
     ip: '',
     uid: '',
+    course: '',
     status: '',
     start: '',
     end: '',
@@ -88,14 +89,14 @@ const LogExplorer = () => {
     fetchLogs(1, updated);
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Log Explorer</h1>
-          <p className="text-gray-500">Search by UID, IP, status, source, and time range.</p>
+          <p className="text-gray-500">Search by UID, course, IP, status, source, and time range.</p>
         </div>
         <button onClick={() => fetchLogs(page)} className="text-gray-600 hover:text-indigo-600 flex items-center gap-2">
           <RefreshCw size={18} />
@@ -107,6 +108,7 @@ const LogExplorer = () => {
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
           <input name="ip" placeholder="IP Address" className="px-4 py-2 border rounded-lg" value={filters.ip} onChange={handleFilterChange} />
           <input name="uid" placeholder="User ID" className="px-4 py-2 border rounded-lg" value={filters.uid} onChange={handleFilterChange} />
+          <input name="course" placeholder="Course Code" className="px-4 py-2 border rounded-lg" value={filters.course} onChange={handleFilterChange} />
           <input name="status" placeholder="Status (e.g. 200)" className="px-4 py-2 border rounded-lg" value={filters.status} onChange={handleFilterChange} />
           <select name="sourceType" value={filters.sourceType} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg">
             <option value="">Source</option>
@@ -146,6 +148,7 @@ const LogExplorer = () => {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Method</th>
                 <th className="px-4 py-3">URL / Message</th>
+                <th className="px-4 py-3">Course</th>
                 <th className="px-4 py-3">IP</th>
                 <th className="px-4 py-3">UID</th>
               </tr>
@@ -179,6 +182,12 @@ const LogExplorer = () => {
                   <td className="px-4 py-3 font-mono text-gray-600">{log.parsedData?.method || '-'}</td>
                   <td className="px-4 py-3 max-w-xs truncate" title={log.parsedData?.url || log.parsedData?.message}>
                     {log.parsedData?.url || log.parsedData?.message || log.rawMessage}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-500 underline-offset-2"
+                    onClick={(e) => { e.stopPropagation(); quickFilter('course', log.parsedData?.course); }}
+                  >
+                    {log.parsedData?.course || '-'}
                   </td>
                   <td
                     className="px-4 py-3 text-gray-500 underline-offset-2"
