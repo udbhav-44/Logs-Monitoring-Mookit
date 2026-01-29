@@ -10,3 +10,6 @@ backend/.env
 frontend/.env
 agent/.env
 *.zip
+forever_logs
+agent/logs
+.offsets.json
