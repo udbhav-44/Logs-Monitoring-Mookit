@@ -6,7 +6,7 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
 
 - **Real-time ingestion**: Lightweight agents tail logs and stream them to the backend.
 - **Strict format parsing**: Accepts only well-formed nginx combined logs and your app log format.
-- **Fast analytics**: Precomputed overview stats reduce UI lag.
+- **Fast analytics**: Precomputed overview stats reduce UI lag (overview defaults to 24h; longer ranges warm in background).
 - **Explorer + filters**: Full-text search plus structured filters (IP, UID, course, status, source, app, VM, time range).
 - **Multi-VM ready**: Agent is portable and configurable per VM.
 
@@ -15,6 +15,10 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
 - **Agent** (Node.js + Chokidar): watches log files/folders, filters, batches, and sends logs.
 - **Backend** (Node.js + Express + MongoDB): parses, stores, and serves analytics/search APIs.
 - **Frontend** (React + Vite + Recharts): dashboard and log explorer.
+
+## Architecture Diagram 
+![Architecture](image.png)
+
 
 ## Quick Start
 
@@ -83,6 +87,7 @@ HOST=0.0.0.0
 MONGO_URI=mongodb://localhost:27017/log-monitoring
 JSON_BODY_LIMIT=10mb
 OVERVIEW_PRECOMPUTE_MS=5000
+APPLICATIONS_PRECOMPUTE_MS=10000
 MONGO_MAX_POOL_SIZE=50
 MONGO_MIN_POOL_SIZE=5
 MONGO_AUTO_INDEX=1

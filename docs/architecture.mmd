@@ -1,0 +1,87 @@
+flowchart LR
+  %% Centralized Log Monitoring System - Detailed Architecture
+
+  subgraph Sources["Log Sources"]
+    A1["Nginx access.log"]
+    A2["App logs (strict format)"]
+    A3["Other files in watched folders"]
+  end
+
+  subgraph Agent["Collector Agent (Node + Chokidar)"]
+    B1["File watcher (files/folders)"]
+    B2["Strict format filter nginx/app only"]
+    B3["Route filter NGINX_REJECT_PREFIXES"]
+    B4["Offset tracker .state file"]
+    B5["Batcher count + bytes"]
+    B6["Retry / Backoff"]
+    B7["Disk Spool spool/*.json"]
+    B8["Gzip payload USE_GZIP"]
+  end
+
+  subgraph Transport["Network"]
+    C1["HTTP POST /api/ingest"]
+  end
+
+  subgraph Backend["Backend API (Node + Express)"]
+    D1["Ingest controller"]
+    D2["Ingest queue mem + backpressure"]
+    D3["Parser service parseLog"]
+    D4["Mongo driver insertMany"]
+    D5["Analytics controllers"]
+    D6["Overview precompute cache"]
+    D7["Applications precompute cache"]
+    D8["Search endpoint"]
+  end
+
+  subgraph DB["MongoDB"]
+    E1["logs collection (capped optional)"]
+    E2["indexes uid/ip/status/course"]
+  end
+
+  subgraph Frontend["React + Vite"]
+    F1["Dashboard"]
+    F2["Log Explorer"]
+    F3["Applications"]
+    F4["User Activity"]
+    F5["Security"]
+  end
+
+  subgraph Ops["Ops / Runtime"]
+    G1["PM2 cluster log-backend"]
+    G2["PM2 fork log-agent"]
+    G3["PM2 preview log-frontend"]
+    G4["systemd units (optional)"]
+    G5["sysctl tuning"]
+  end
+
+  A1 --> B1
+  A2 --> B1
+  A3 --> B1
+  B1 --> B2 --> B3 --> B4 --> B5
+  B5 --> B6 --> B8 --> C1
+  B6 --> B7
+  B7 --> B8
+
+  C1 --> D1 --> D2 --> D3 --> D4 --> E1 --> E2
+
+  E1 --> D5
+  D5 --> D6 --> F1
+  D5 --> D7 --> F3
+  D5 --> D8 --> F2
+  D5 --> F4
+  D5 --> F5
+
+  F1 -->|GET /api/analytics/overview| D5
+  F2 -->|GET /api/analytics/search| D8
+  F3 -->|GET /api/analytics/applications| D5
+  F4 -->|GET /api/analytics/activity| D5
+  F5 -->|GET /api/analytics/suspicious| D5
+
+  G1 --> Backend
+  G2 --> Agent
+  G3 --> Frontend
+  G4 --> Backend
+  G4 --> Agent
+  G4 --> Frontend
+  G5 --> Backend
+  G5 --> DB
