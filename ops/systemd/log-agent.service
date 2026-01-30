@@ -1,0 +1,16 @@
+[Unit]
+Description=Log Monitoring Agent
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/log_monitoring/Logs-Monitoring-Mookit/agent
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node collector.js
+Restart=always
+RestartSec=3
+LimitNOFILE=200000
+
+[Install]
+WantedBy=multi-user.target

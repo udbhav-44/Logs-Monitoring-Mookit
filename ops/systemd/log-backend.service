@@ -1,0 +1,16 @@
+[Unit]
+Description=Log Monitoring Backend
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/log_monitoring/Logs-Monitoring-Mookit/backend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+LimitNOFILE=200000
+
+[Install]
+WantedBy=multi-user.target
