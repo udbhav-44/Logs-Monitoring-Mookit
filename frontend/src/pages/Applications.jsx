@@ -25,6 +25,15 @@ const Applications = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    const refreshMs = Number(import.meta.env.VITE_APPLICATIONS_REFRESH_MS) || 10000;
+    if (Number.isNaN(refreshMs) || refreshMs <= 0) return undefined;
+    const interval = setInterval(() => {
+      load();
+    }, refreshMs);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
