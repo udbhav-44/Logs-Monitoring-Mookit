@@ -23,7 +23,8 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState(() => getStoredRange('30d'));
+  const [warming, setWarming] = useState(false);
+  const [range, setRange] = useState(() => getStoredRange('24h'));
   const hasUserSetRange = useRef(false);
   const refreshInFlight = useRef(false);
   const navigate = useNavigate();
@@ -37,8 +38,14 @@ const Dashboard = () => {
     if (!silent && !stats) setLoading(true);
     setError('');
     try {
-      const data = await fetchOverview({ range: selectedRange });
-      setStats(data);
+      const res = await fetchOverview({ range: selectedRange });
+      const data = res?.data || {};
+      if (res?.status === 202) {
+        setWarming(true);
+      } else {
+        setStats(data);
+        setWarming(false);
+      }
     } catch (err) {
       console.error(err);
       setError('Unable to load analytics right now. Please verify the backend is running on the configured port.');
@@ -146,6 +153,7 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">System Overview</h1>
           <p className="text-gray-500">Traffic, errors, and activity across all monitored apps.</p>
+          {warming && <p className="text-sm text-gray-500 mt-1">Warming up overview metrics...</p>}
         </div>
         <div className="flex items-center gap-3">
           <div className="text-sm text-gray-500">Range</div>

@@ -6,13 +6,20 @@ const Applications = () => {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [warming, setWarming] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
       const res = await fetchApplications();
-      setApps(res.applications || []);
+      const data = res?.data || {};
+      if (res?.status === 202 && (data.applications || []).length === 0) {
+        setWarming(true);
+      } else {
+        setApps(data.applications || []);
+        setWarming(false);
+      }
     } catch (err) {
       console.error(err);
       setError('Unable to load application metrics.');
@@ -48,6 +55,7 @@ const Applications = () => {
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
       {loading && <p className="text-gray-500 text-sm">Loading applications...</p>}
+      {warming && !loading && <p className="text-gray-500 text-sm">Warming up application metrics...</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {apps.map((app) => (
