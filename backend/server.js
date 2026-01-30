@@ -16,7 +16,7 @@ app.use(express.urlencoded({ limit: jsonLimit, extended: false }));
 
 const ingestRoutes = require('./routes/ingestRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
-const { startOverviewPrecompute } = require('./controllers/analyticsController');
+const { startOverviewPrecompute, startApplicationsPrecompute } = require('./controllers/analyticsController');
 
 app.use('/api/ingest', ingestRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -33,6 +33,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
     startOverviewPrecompute();
+    startApplicationsPrecompute();
 });
 
 server.keepAliveTimeout = Number(process.env.HTTP_KEEPALIVE_TIMEOUT_MS) || 60000;

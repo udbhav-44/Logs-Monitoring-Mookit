@@ -32,9 +32,13 @@ const setCached = (key, value, ttlMs) => {
 
 const PRECOMPUTE_RANGES = ['24h', '7d', '30d', 'all'];
 const OVERVIEW_PRECOMPUTE_MS = toNumber(process.env.OVERVIEW_PRECOMPUTE_MS, 5000);
+const APPLICATIONS_PRECOMPUTE_MS = toNumber(process.env.APPLICATIONS_PRECOMPUTE_MS, 10000);
 const precomputedOverview = new Map();
+const precomputedApplications = new Map();
 let overviewPrecomputeTimer = null;
+let applicationsPrecomputeTimer = null;
 let overviewPrecomputeInFlight = false;
+let applicationsPrecomputeInFlight = false;
 
 const getOverviewRangeKey = (params = {}) => {
     const range = String(params.range || '24h').toLowerCase();
@@ -293,6 +297,60 @@ const startOverviewPrecompute = () => {
     overviewPrecomputeTimer = setInterval(run, OVERVIEW_PRECOMPUTE_MS);
 };
 
+const computeApplicationsPayload = async (params = {}) => {
+    const { start: windowStart, end: windowEnd } = getRangeWindow(params, 'all');
+    const windowMatch = buildTimeMatch(windowStart, windowEnd);
+    const pipeline = [];
+    if (Object.keys(windowMatch).length) {
+        pipeline.push({ $match: windowMatch });
+    }
+    pipeline.push({
+        $group: {
+            _id: '$appInfo.name',
+            total: { $sum: 1 },
+            errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
+            vmIds: { $addToSet: '$appInfo.vmId' },
+            nginxCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'nginx'] }, 1, 0] } },
+            appCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'app'] }, 1, 0] } },
+            dbCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'db'] }, 1, 0] } }
+        }
+    });
+
+    const applications = await Log.aggregate(pipeline).allowDiskUse(true);
+    const appView = applications.map(app => ({
+        app: app._id || 'unknown-app',
+        total: app.total,
+        errors: app.errors,
+        vmIds: app.vmIds,
+        errorRate: app.total ? Number(((app.errors / app.total) * 100).toFixed(1)) : 0,
+        sources: {
+            nginx: app.nginxCount || 0,
+            app: app.appCount || 0,
+            db: app.dbCount || 0
+        }
+    })).sort((a, b) => b.total - a.total);
+
+    return { applications: appView, range: { start: windowStart, end: windowEnd } };
+};
+
+const startApplicationsPrecompute = () => {
+    if (applicationsPrecomputeTimer || APPLICATIONS_PRECOMPUTE_MS <= 0) return;
+    const run = async () => {
+        if (applicationsPrecomputeInFlight) return;
+        applicationsPrecomputeInFlight = true;
+        try {
+            const payload = await computeApplicationsPayload({ range: 'all' });
+            precomputedApplications.set('all', { payload, updatedAt: Date.now() });
+        } catch (error) {
+            console.error('Applications precompute failed:', error.message);
+        } finally {
+            applicationsPrecomputeInFlight = false;
+        }
+    };
+    run();
+    applicationsPrecomputeTimer = setInterval(run, APPLICATIONS_PRECOMPUTE_MS);
+};
+
 // @desc    Get UID Directory
 // @route   GET /api/analytics/uids
 const getUidDirectory = async (req, res) => {
@@ -339,6 +397,22 @@ const getOverviewStats = async (req, res) => {
             if (precomputed?.payload) {
                 setCached(cacheKey, precomputed.payload, CACHE_TTL_MS.overview);
                 return res.json(precomputed.payload);
+            }
+            if (overviewPrecomputeInFlight) {
+                return res.status(202).json({
+                    totals: { overall: 0, last7d: 0, last24h: 0, window: 0 },
+                    statusDist: [],
+                    statusBuckets: { ok2xx: 0, redirect3xx: 0, client4xx: 0, server5xx: 0 },
+                    traffic: [],
+                    errorTrend: [],
+                    topEndpoints: [],
+                    topIps: [],
+                    topUids: [],
+                    applications: [],
+                    bucketUnit: 'hour',
+                    range: { start: null, end: null },
+                    status: 'warming'
+                });
             }
         }
 
@@ -563,40 +637,24 @@ const getApplicationOverview = async (req, res) => {
         const cached = getCached(cacheKey);
         if (cached) return res.json(cached);
 
-        const { start: windowStart, end: windowEnd } = getRangeWindow(req.query, 'all');
-        const windowMatch = buildTimeMatch(windowStart, windowEnd);
-        const pipeline = [];
-        if (Object.keys(windowMatch).length) {
-            pipeline.push({ $match: windowMatch });
+        const hasCustomWindow = Boolean(req.query.start || req.query.end);
+        const range = String(req.query.range || 'all').toLowerCase();
+        if (!hasCustomWindow && range === 'all') {
+            const precomputed = precomputedApplications.get('all');
+            if (precomputed?.payload) {
+                setCached(cacheKey, precomputed.payload, CACHE_TTL_MS.applications);
+                return res.json(precomputed.payload);
+            }
+            if (applicationsPrecomputeInFlight) {
+                return res.status(202).json({
+                    applications: [],
+                    range: { start: null, end: null },
+                    status: 'warming'
+                });
+            }
         }
-        pipeline.push({
-            $group: {
-                _id: '$appInfo.name',
-                total: { $sum: 1 },
-                errors: { $sum: { $cond: [{ $gte: ['$parsedData.status', 400] }, 1, 0] } },
-                vmIds: { $addToSet: '$appInfo.vmId' },
-                nginxCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'nginx'] }, 1, 0] } },
-                appCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'app'] }, 1, 0] } },
-                dbCount: { $sum: { $cond: [{ $eq: ['$sourceType', 'db'] }, 1, 0] } }
-            }
-        });
 
-        const applications = await Log.aggregate(pipeline).allowDiskUse(true);
-
-        const appView = applications.map(app => ({
-            app: app._id || 'unknown-app',
-            total: app.total,
-            errors: app.errors,
-            vmIds: app.vmIds,
-            errorRate: app.total ? Number(((app.errors / app.total) * 100).toFixed(1)) : 0,
-            sources: {
-                nginx: app.nginxCount || 0,
-                app: app.appCount || 0,
-                db: app.dbCount || 0
-            }
-        })).sort((a, b) => b.total - a.total);
-
-        const payload = { applications: appView, range: { start: windowStart, end: windowEnd } };
+        const payload = await computeApplicationsPayload(req.query);
         setCached(cacheKey, payload, CACHE_TTL_MS.applications);
         res.json(payload);
     } catch (error) {
@@ -607,6 +665,7 @@ const getApplicationOverview = async (req, res) => {
 module.exports = {
     getOverviewStats,
     startOverviewPrecompute,
+    startApplicationsPrecompute,
     searchLogs,
     getUserActivity,
     getSuspiciousActivity,
