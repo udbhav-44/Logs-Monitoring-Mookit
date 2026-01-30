@@ -85,12 +85,26 @@ JSON_BODY_LIMIT=10mb
 OVERVIEW_PRECOMPUTE_MS=5000
 MONGO_MAX_POOL_SIZE=50
 MONGO_MIN_POOL_SIZE=5
+MONGO_AUTO_INDEX=1
+MONGO_CAP_BYTES=53687091200
+HTTP_KEEPALIVE_TIMEOUT_MS=60000
+HTTP_HEADERS_TIMEOUT_MS=65000
+HTTP_REQUEST_TIMEOUT_MS=120000
+INGEST_BATCH_SIZE=2000
+INGEST_MAX_BYTES=5242880
+INGEST_QUEUE_MAX=200000
+INGEST_QUEUE_MAX_BYTES=209715200
+INGEST_FLUSH_INTERVAL_MS=200
+INGEST_RETRY_BASE_MS=500
+INGEST_RETRY_MAX_MS=10000
+INGEST_RETRY_JITTER_MS=200
 ```
 
 ### Frontend environment (`frontend/.env`)
 ```
 VITE_API_BASE_URL=http://<BACKEND_HOST>:5002
 VITE_DASHBOARD_REFRESH_MS=5000
+VITE_APPLICATIONS_REFRESH_MS=10000
 ```
 
 ### Agent environment (`agent/.env`)
@@ -115,6 +129,17 @@ NGINX_REJECT_PREFIXES=/studentapi,/api
 # Payload sizing / compression
 MAX_BATCH_BYTES=1000000
 USE_GZIP=1
+
+# Reliability / buffering
+MAX_BUFFER_ITEMS=20000
+MAX_BUFFER_BYTES=20000000
+ENABLE_SPOOL=1
+SPOOL_DIR=spool
+MAX_SPOOL_BYTES=209715200
+RETRY_BASE_MS=1000
+RETRY_MAX_MS=30000
+RETRY_JITTER_MS=250
+HTTP_TIMEOUT_MS=10000
 ```
 
 ## Log Explorer
@@ -141,22 +166,54 @@ node backend/scripts/reset-db.js
 RESET_OFFSETS=1 node agent/collector.js
 ```
 
+Note: `MONGO_CAP_BYTES` (capped collection) only applies when the collection is created.
+For a fresh start, drop the database before enabling capped storage.
+
 ## Performance / Production Notes
 
 **Backend**
 - Uses precomputed overview stats on a timer (`OVERVIEW_PRECOMPUTE_MS`).
 - Uses MongoDB connection pooling (`MONGO_MAX_POOL_SIZE`, `MONGO_MIN_POOL_SIZE`).
 - Accepts larger JSON payloads (`JSON_BODY_LIMIT`).
+- Supports capped log storage (`MONGO_CAP_BYTES`) for size-based retention.
 
 **Agent**
 - Byte-capped batching (`MAX_BATCH_BYTES`) to avoid oversized requests.
 - Optional gzip (`USE_GZIP=1`) to reduce payload size.
 - Offset tracking to resume without re-ingesting old logs.
+- Disk spooling (`ENABLE_SPOOL=1`) to survive backend/network outages.
 
 **Recommended production practices**
 - Run backend with a process manager (e.g., PM2 cluster mode).
 - Put MongoDB on dedicated SSD/NVMe storage.
 - Tune OS limits (ulimit, TCP backlog) for high ingest.
+
+## Production Ops (PM2, systemd, sysctl)
+
+We include production helpers under `ops/`.
+
+### PM2 (multi-core backend)
+```bash
+npm install -g pm2
+pm2 start ops/pm2/ecosystem.config.cjs
+pm2 save
+pm2 startup
+```
+
+### systemd (auto-restart on boot)
+```bash
+sudo cp ops/systemd/log-backend.service /etc/systemd/system/
+sudo cp ops/systemd/log-agent.service /etc/systemd/system/
+sudo cp ops/systemd/log-frontend.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now log-backend log-agent log-frontend
+```
+
+### sysctl (kernel tuning)
+```bash
+sudo cp ops/sysctl.d/99-log-monitoring.conf /etc/sysctl.d/
+sudo sysctl --system
+```
 
 ## Troubleshooting
 
