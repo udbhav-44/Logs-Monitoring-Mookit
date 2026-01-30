@@ -480,7 +480,7 @@ const getSuspiciousActivity = async (req, res) => {
             { $match: { count: { $gte: 8 } } },
             { $sort: { count: -1 } },
             { $limit: 50 }
-        ]);
+        ]).allowDiskUse(true);
 
         const serverErrors = await Log.aggregate([
             {
@@ -494,7 +494,7 @@ const getSuspiciousActivity = async (req, res) => {
             { $match: { count: { $gte: 6 } } },
             { $sort: { count: -1 } },
             { $limit: 50 }
-        ]);
+        ]).allowDiskUse(true);
 
         const perMinuteBursts = await Log.aggregate([
             { $match: { ...windowMatch, 'parsedData.ip': { $exists: true, $ne: null } } },
@@ -515,7 +515,7 @@ const getSuspiciousActivity = async (req, res) => {
                     lastSeen: { $max: '$_id.minute' }
                 }
             }
-        ]);
+        ]).allowDiskUse(true);
 
         const alerts = [];
 

@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const capBytes = Number(process.env.MONGO_CAP_BYTES) || 0;
+const schemaOptions = { timestamps: true };
+if (capBytes > 0) {
+  schemaOptions.capped = { size: capBytes };
+}
+
 const logSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
@@ -32,7 +38,7 @@ const logSchema = new mongoose.Schema({
     level: String, // for app logs (info, error, etc.)
     message: String // parsed message body for app logs
   }
-}, { timestamps: true });
+}, schemaOptions);
 
 // Compound indexes for common queries
 logSchema.index({ 'parsedData.uid': 1, timestamp: -1 });

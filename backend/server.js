@@ -12,6 +12,7 @@ const app = express();
 app.use(cors());
 const jsonLimit = process.env.JSON_BODY_LIMIT || '10mb';
 app.use(express.json({ limit: jsonLimit, inflate: true }));
+app.use(express.urlencoded({ limit: jsonLimit, extended: false }));
 
 const ingestRoutes = require('./routes/ingestRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
@@ -29,7 +30,11 @@ console.log('Loaded PORT from env:', process.env.PORT);
 const PORT = process.env.PORT || 5002;
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
     startOverviewPrecompute();
 });
+
+server.keepAliveTimeout = Number(process.env.HTTP_KEEPALIVE_TIMEOUT_MS) || 60000;
+server.headersTimeout = Number(process.env.HTTP_HEADERS_TIMEOUT_MS) || 65000;
+server.requestTimeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS) || 120000;
