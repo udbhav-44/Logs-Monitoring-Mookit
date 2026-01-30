@@ -46,6 +46,17 @@ NGINX_REJECT_PREFIXES=/studentapi,/api
 # Payload sizing / compression
 MAX_BATCH_BYTES=1000000
 USE_GZIP=1
+
+# Reliability / buffering
+MAX_BUFFER_ITEMS=20000
+MAX_BUFFER_BYTES=20000000
+ENABLE_SPOOL=1
+SPOOL_DIR=spool
+MAX_SPOOL_BYTES=209715200
+RETRY_BASE_MS=1000
+RETRY_MAX_MS=30000
+RETRY_JITTER_MS=250
+HTTP_TIMEOUT_MS=10000
 ```
 
 ### Folder watch
@@ -72,6 +83,11 @@ Reset offsets:
 ```bash
 RESET_OFFSETS=1 node collector.js
 ```
+
+## Spooling (Disk Buffer)
+
+When the backend is unavailable, the agent can spill batches to disk instead of dropping them.
+Spool files live in `SPOOL_DIR` and are retried before in-memory buffers.
 
 ## Production Tips
 

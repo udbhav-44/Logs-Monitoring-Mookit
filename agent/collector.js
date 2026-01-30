@@ -26,7 +26,16 @@ const CONFIG = {
         .map((prefix) => prefix.trim())
         .filter((prefix) => prefix),
     maxBatchBytes: Number(process.env.MAX_BATCH_BYTES) || 1000000,
-    useGzip: process.env.USE_GZIP === '1' || process.env.USE_GZIP === 'true'
+    useGzip: process.env.USE_GZIP === '1' || process.env.USE_GZIP === 'true',
+    maxBufferItems: Number(process.env.MAX_BUFFER_ITEMS) || 20000,
+    maxBufferBytes: Number(process.env.MAX_BUFFER_BYTES) || 20000000,
+    enableSpool: process.env.ENABLE_SPOOL !== '0',
+    spoolDir: process.env.SPOOL_DIR || path.join(__dirname, 'spool'),
+    maxSpoolBytes: Number(process.env.MAX_SPOOL_BYTES) || 200 * 1024 * 1024,
+    retryBaseMs: Number(process.env.RETRY_BASE_MS) || 1000,
+    retryMaxMs: Number(process.env.RETRY_MAX_MS) || 30000,
+    retryJitterMs: Number(process.env.RETRY_JITTER_MS) || 250,
+    httpTimeoutMs: Number(process.env.HTTP_TIMEOUT_MS) || 10000
 };
 
 let logBuffer = [];
@@ -37,9 +46,12 @@ const fileStates = new Map();
 let rejectedLines = 0;
 const offsetsState = { version: 1, files: {} };
 let pendingStateSave = null;
+let nextFlushAt = 0;
+let retryDelayMs = CONFIG.retryBaseMs;
+let spoolCounter = 0;
 const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 50 });
 const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 50 });
-const apiClient = axios.create({ httpAgent, httpsAgent, timeout: 10000 });
+const apiClient = axios.create({ httpAgent, httpsAgent, timeout: CONFIG.httpTimeoutMs });
 
 const loadOffsetsState = () => {
     if (CONFIG.resetOffsets) {
@@ -109,9 +121,134 @@ console.log(' Starting Log Collector Agent...');
 console.log(' Configuration:', CONFIG);
 loadOffsetsState();
 
+const ensureSpoolDir = () => {
+    if (!CONFIG.enableSpool) return;
+    if (!fs.existsSync(CONFIG.spoolDir)) {
+        fs.mkdirSync(CONFIG.spoolDir, { recursive: true });
+    }
+};
+
+const listSpoolFiles = () => {
+    if (!CONFIG.enableSpool || !fs.existsSync(CONFIG.spoolDir)) return [];
+    return fs.readdirSync(CONFIG.spoolDir)
+        .filter((name) => name.endsWith('.json'))
+        .map((name) => path.join(CONFIG.spoolDir, name))
+        .sort();
+};
+
+const getSpoolSize = (files) => {
+    return files.reduce((sum, file) => {
+        try {
+            return sum + fs.statSync(file).size;
+        } catch (e) {
+            return sum;
+        }
+    }, 0);
+};
+
+const trimSpoolToFit = (bytesNeeded) => {
+    if (!CONFIG.enableSpool) return true;
+    ensureSpoolDir();
+    let files = listSpoolFiles();
+    let total = getSpoolSize(files);
+    if (total + bytesNeeded <= CONFIG.maxSpoolBytes) return true;
+
+    for (const file of files) {
+        try {
+            const size = fs.statSync(file).size;
+            fs.unlinkSync(file);
+            total -= size;
+            if (total + bytesNeeded <= CONFIG.maxSpoolBytes) return true;
+        } catch (e) {
+            // ignore and continue
+        }
+    }
+    return total + bytesNeeded <= CONFIG.maxSpoolBytes;
+};
+
+const writeSpoolFile = (payload) => {
+    if (!CONFIG.enableSpool) return false;
+    ensureSpoolDir();
+    const bytes = Buffer.byteLength(payload);
+    if (!trimSpoolToFit(bytes)) {
+        console.warn('Spool full, dropping payload.');
+        return false;
+    }
+    const name = `spool-${Date.now()}-${spoolCounter++}.json`;
+    const filePath = path.join(CONFIG.spoolDir, name);
+    try {
+        fs.writeFileSync(filePath, payload);
+        return true;
+    } catch (e) {
+        console.warn(`Failed to write spool file ${filePath}:`, e.message);
+        return false;
+    }
+};
+
+const readSpoolPayload = (filePath) => {
+    try {
+        return fs.readFileSync(filePath, 'utf8');
+    } catch (e) {
+        return null;
+    }
+};
+
+const removeSpoolFile = (filePath) => {
+    try {
+        fs.unlinkSync(filePath);
+    } catch (e) {
+        // ignore
+    }
+};
+
+const recordSendFailure = () => {
+    const jitter = Math.floor(Math.random() * CONFIG.retryJitterMs);
+    retryDelayMs = Math.min(CONFIG.retryMaxMs, retryDelayMs * 2);
+    nextFlushAt = Date.now() + retryDelayMs + jitter;
+};
+
+const resetRetry = () => {
+    retryDelayMs = CONFIG.retryBaseMs;
+    nextFlushAt = 0;
+};
+
+const sendPayload = async (payload) => {
+    const body = CONFIG.useGzip ? zlib.gzipSync(payload) : payload;
+    const headers = { 'Content-Type': 'application/json' };
+    if (CONFIG.useGzip) headers['Content-Encoding'] = 'gzip';
+
+    await apiClient.post(CONFIG.backendUrl, body, {
+        headers,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+    });
+};
+
+const drainSpool = async () => {
+    if (!CONFIG.enableSpool) return true;
+    const files = listSpoolFiles();
+    for (const file of files) {
+        const payload = readSpoolPayload(file);
+        if (!payload) {
+            removeSpoolFile(file);
+            continue;
+        }
+        try {
+            await sendPayload(payload);
+            removeSpoolFile(file);
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Failed to send spooled logs:`, error.message);
+            recordSendFailure();
+            return false;
+        }
+    }
+    return true;
+};
+
 const flushLogs = async () => {
     if (isFlushing) return;
-    if (logBuffer.length === 0) {
+    if (Date.now() < nextFlushAt) return;
+    if (logBuffer.length === 0 && (!CONFIG.enableSpool || listSpoolFiles().length === 0)) {
         if (rejectedLines > 0) {
             console.log(`[${new Date().toISOString()}] Rejected ${rejectedLines} non-matching lines.`);
             rejectedLines = 0;
@@ -121,34 +258,29 @@ const flushLogs = async () => {
     isFlushing = true;
 
     try {
+        if (!(await drainSpool())) return;
+        resetRetry();
         while (logBuffer.length > 0) {
             const batchItems = pullBatch();
             if (batchItems.length === 0) break;
             const batch = batchItems.map((item) => item.entry);
             try {
                 const payload = JSON.stringify({ logs: batch });
-                const body = CONFIG.useGzip ? zlib.gzipSync(payload) : payload;
-                const headers = {
-                    'Content-Type': 'application/json'
-                };
-                if (CONFIG.useGzip) {
-                    headers['Content-Encoding'] = 'gzip';
-                }
-
-                await apiClient.post(CONFIG.backendUrl, body, {
-                    headers,
-                    maxBodyLength: Infinity
-                });
+                await sendPayload(payload);
                 console.log(`[${new Date().toISOString()}] Flushed ${batch.length} logs to backend.`);
             } catch (error) {
                 console.error(`[${new Date().toISOString()}] Failed to send logs:`, error.message);
-                // Put them back to avoid data loss, but cap to avoid memory leaks if backend is down.
-                if (logBuffer.length < 1000) {
-                    logBuffer = [...batchItems, ...logBuffer];
-                    bufferBytes = logBuffer.reduce((sum, item) => sum + item.size, 0);
-                } else {
-                    console.warn('Buffer full, dropping logs.');
+                const payload = JSON.stringify({ logs: batch });
+                if (!writeSpoolFile(payload)) {
+                    // Put them back to avoid data loss, but cap to avoid memory leaks if backend is down.
+                    if (logBuffer.length < CONFIG.maxBufferItems) {
+                        logBuffer = [...batchItems, ...logBuffer];
+                        bufferBytes = logBuffer.reduce((sum, item) => sum + item.size, 0);
+                    } else {
+                        console.warn('Buffer full, dropping logs.');
+                    }
                 }
+                recordSendFailure();
                 break;
             }
         }
@@ -189,6 +321,16 @@ const processLine = (filePath, line) => {
     const size = estimateEntrySize(logEntry);
     logBuffer.push({ entry: logEntry, size });
     bufferBytes += size;
+
+    if (logBuffer.length > CONFIG.maxBufferItems || bufferBytes > CONFIG.maxBufferBytes) {
+        const overflowBatch = pullBatch();
+        if (overflowBatch.length > 0) {
+            const payload = JSON.stringify({ logs: overflowBatch.map((item) => item.entry) });
+            if (!writeSpoolFile(payload)) {
+                console.warn('Unable to spool overflow batch, dropping logs.');
+            }
+        }
+    }
 
     if (logBuffer.length >= CONFIG.batchSize || bufferBytes >= CONFIG.maxBatchBytes) {
         flushLogs();

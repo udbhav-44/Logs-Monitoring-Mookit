@@ -13,3 +13,4 @@ agent/.env
 forever_logs
 agent/logs
 .offsets.json
+agent/spool
