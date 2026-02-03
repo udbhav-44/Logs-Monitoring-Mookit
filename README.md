@@ -1,24 +1,21 @@
 # Centralized Log Monitoring System
 
-A full-stack platform for ingesting, parsing, and exploring logs from distributed applications and web servers (Nginx). The system provides real-time ingestion, fast search, and analytics dashboards to track traffic, user activity, and anomalies.
+A full-stack platform for ingesting, parsing, and exploring logs from distributed applications and web servers (Nginx). The system provides real-time ingestion, fast search, SQL-based filtering, and analytics dashboards to track traffic, user activity, and anomalies.
 
 ## Highlights
 
 - **Real-time ingestion**: Lightweight agents tail logs and stream them to the backend.
 - **Strict format parsing**: Accepts only well-formed nginx combined logs and your app log format.
-- **Fast analytics**: Precomputed overview stats reduce UI lag (overview defaults to 24h; longer ranges warm in background).
+- **Fast analytics**: Powered by ClickHouse for high-performance querying of millions of log lines.
 - **Explorer + filters**: Full-text search plus structured filters (IP, UID, course, status, source, app, VM, time range).
+- **Security Alerts**: Automated email alerts for suspicious activity (Brute force, etc.).
 - **Multi-VM ready**: Agent is portable and configurable per VM.
 
 ## Architecture
 
 - **Agent** (Node.js + Chokidar): watches log files/folders, filters, batches, and sends logs.
-- **Backend** (Node.js + Express + MongoDB): parses, stores, and serves analytics/search APIs.
+- **Backend** (Node.js + Express + ClickHouse): parses, stores, creates alerts, and serves analytics/search APIs.
 - **Frontend** (React + Vite + Recharts): dashboard and log explorer.
-
-## Architecture Diagram 
-![Architecture](image.png)
-
 
 ## Quick Start
 
@@ -26,7 +23,7 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
    ```bash
    chmod +x start-all.sh
    ```
-2. **Run the stack** (ensure MongoDB is running)
+2. **Run the stack**
    ```bash
    ./start-all.sh
    ```
@@ -40,7 +37,7 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
    http://localhost:5173
    ```
 
-Optional clean start:
+Optional clean start (resets ClickHouse data):
 ```bash
 RESET_DB=1 ./start-all.sh
 ```
@@ -70,8 +67,9 @@ Where:
 │   └── .env            # Agent configuration
 ├── backend/            # Central API & Parsing Logic
 │   ├── server.js       # Entry point
-│   ├── models/         # MongoDB models
-│   └── controllers/    # API Controllers (Ingest, Analytics)
+│   ├── controllers/    # API Controllers (Ingest, Analytics)
+│   ├── services/       # Alert Service, Parser
+│   └── config/         # ClickHouse config
 ├── frontend/           # React Dashboard
 │   ├── src/pages/      # Dashboard Views (Overview, Explorer, etc.)
 │   └── src/components/ # Reusable UI components
@@ -84,25 +82,20 @@ Where:
 ```
 PORT=5002
 HOST=0.0.0.0
-MONGO_URI=mongodb://localhost:27017/log-monitoring
 JSON_BODY_LIMIT=10mb
 OVERVIEW_PRECOMPUTE_MS=5000
 APPLICATIONS_PRECOMPUTE_MS=10000
-MONGO_MAX_POOL_SIZE=50
-MONGO_MIN_POOL_SIZE=5
-MONGO_AUTO_INDEX=1
-MONGO_CAP_BYTES=53687091200
-HTTP_KEEPALIVE_TIMEOUT_MS=60000
-HTTP_HEADERS_TIMEOUT_MS=65000
-HTTP_REQUEST_TIMEOUT_MS=120000
-INGEST_BATCH_SIZE=2000
-INGEST_MAX_BYTES=5242880
-INGEST_QUEUE_MAX=200000
-INGEST_QUEUE_MAX_BYTES=209715200
-INGEST_FLUSH_INTERVAL_MS=200
-INGEST_RETRY_BASE_MS=500
-INGEST_RETRY_MAX_MS=10000
-INGEST_RETRY_JITTER_MS=200
+
+# ClickHouse Configuration
+CLICKHOUSE_HOST=http://localhost:8123
+CLICKHOUSE_DATABASE=logs
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=login123
+
+# Email Alerts
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+ALERT_TO_EMAIL=recipient@example.com
 ```
 
 ### Frontend environment (`frontend/.env`)
@@ -162,37 +155,6 @@ HTTP_TIMEOUT_MS=10000
    node collector.js
    ```
 
-## Reset Everything (DB + Offsets)
-
-To clear all logs and re-ingest from scratch:
-
-```bash
-node backend/scripts/reset-db.js
-RESET_OFFSETS=1 node agent/collector.js
-```
-
-Note: `MONGO_CAP_BYTES` (capped collection) only applies when the collection is created.
-For a fresh start, drop the database before enabling capped storage.
-
-## Performance / Production Notes
-
-**Backend**
-- Uses precomputed overview stats on a timer (`OVERVIEW_PRECOMPUTE_MS`).
-- Uses MongoDB connection pooling (`MONGO_MAX_POOL_SIZE`, `MONGO_MIN_POOL_SIZE`).
-- Accepts larger JSON payloads (`JSON_BODY_LIMIT`).
-- Supports capped log storage (`MONGO_CAP_BYTES`) for size-based retention.
-
-**Agent**
-- Byte-capped batching (`MAX_BATCH_BYTES`) to avoid oversized requests.
-- Optional gzip (`USE_GZIP=1`) to reduce payload size.
-- Offset tracking to resume without re-ingesting old logs.
-- Disk spooling (`ENABLE_SPOOL=1`) to survive backend/network outages.
-
-**Recommended production practices**
-- Run backend with a process manager (e.g., PM2 cluster mode).
-- Put MongoDB on dedicated SSD/NVMe storage.
-- Tune OS limits (ulimit, TCP backlog) for high ingest.
-
 ## Production Ops (PM2, systemd, sysctl)
 
 We include production helpers under `ops/`.
@@ -219,11 +181,3 @@ sudo systemctl enable --now log-backend log-agent log-frontend
 sudo cp ops/sysctl.d/99-log-monitoring.conf /etc/sysctl.d/
 sudo sysctl --system
 ```
-
-## Troubleshooting
-
-- **PayloadTooLargeError**: increase `JSON_BODY_LIMIT` or reduce `BATCH_SIZE` / `MAX_BATCH_BYTES`.
-- **UI not updating quickly**: lower `OVERVIEW_PRECOMPUTE_MS` and `VITE_DASHBOARD_REFRESH_MS`.
-- **Agent not sending logs**: verify `BACKEND_URL`, file paths, and `agent.log`.
-- **MongoDB connection failed**: verify `MONGO_URI` and that `mongod` is running.
-- **Port in use**: update `PORT` in `backend/.env` and `VITE_API_BASE_URL` in `frontend/.env`.
