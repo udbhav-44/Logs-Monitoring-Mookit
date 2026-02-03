@@ -116,10 +116,18 @@ const Security = () => {
               </div>
             </div>
             <p className="text-sm text-gray-600">{alert.description}</p>
-            <p className="text-xs text-gray-400 mt-2">Last seen: {alert.lastSeen ? new Date(alert.lastSeen).toLocaleString() : '—'}</p>
+            {alert.uids && alert.uids.length > 0 && (
+              <p className="text-xs text-indigo-600 mt-2 font-medium">
+                Users: {alert.uids.join(', ')}
+              </p>
+            )}
+            <p className="text-xs text-gray-400 mt-1 truncate" title={alert.userAgent}>
+              UA: {alert.userAgent || 'Unknown'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Last seen: {alert.lastSeen ? new Date(alert.lastSeen).toLocaleString() : '—'}</p>
             {alert.actor && (
               <button
-                onClick={() => navigate(`/logs?ip=${encodeURIComponent(alert.actor)}`)}
+                onClick={() => navigate(`/logs?ip=${encodeURIComponent(alert.actor)}&range=${range}`)}
                 className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-sm font-semibold hover:text-indigo-800"
               >
                 View related logs <ExternalLink size={14} />

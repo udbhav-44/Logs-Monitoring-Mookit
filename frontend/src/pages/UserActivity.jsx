@@ -18,7 +18,7 @@ const UserActivity = () => {
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [timeframe, setTimeframe] = useState('24h');
+  const [timeframe, setTimeframe] = useState('7d');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [uidDirectory, setUidDirectory] = useState([]);
@@ -309,7 +309,7 @@ const UserActivity = () => {
           <div className="bg-white border border-gray-100 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Top Actions</h3>
             <div className="space-y-2">
-                  {topActions.map((action) => (
+              {topActions.map((action) => (
                 <button
                   key={action.action}
                   type="button"
@@ -320,7 +320,7 @@ const UserActivity = () => {
                   <span className="text-gray-700 font-semibold">{action.count}</span>
                 </button>
               ))}
-                  {topActions.length === 0 && <p className="text-sm text-gray-500">No recent actions.</p>}
+              {topActions.length === 0 && <p className="text-sm text-gray-500">No recent actions.</p>}
             </div>
           </div>
 
@@ -339,9 +339,8 @@ const UserActivity = () => {
                         {log.parsedData?.method || 'EVENT'} {log.parsedData?.url || ''}
                       </h4>
                       <span
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          Number(log.parsedData?.status) >= 400 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                        }`}
+                        className={`px-2 py-0.5 rounded text-xs font-bold ${Number(log.parsedData?.status) >= 400 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}
                       >
                         {log.parsedData?.status || '—'}
                       </span>

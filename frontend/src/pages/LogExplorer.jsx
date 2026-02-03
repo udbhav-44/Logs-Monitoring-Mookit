@@ -24,20 +24,25 @@ const LogExplorer = () => {
     sourceType: '',
     app: '',
     vmId: '',
-    search: ''
+    search: '',
+    range: 'all'
   });
 
   const fetchLogs = async (nextPage = page, overrideFilters = null) => {
     setLoading(true);
+    setLogs([]); // Force clear to prevent appending illusion
     try {
+      console.log('Fetching logs for page:', nextPage);
       const effectiveFilters = overrideFilters ? { ...overrideFilters } : { ...filters };
       const res = await searchLogs({
         page: nextPage,
         limit: PAGE_SIZE,
         ...Object.fromEntries(Object.entries(effectiveFilters).filter(([_, v]) => v))
       });
+      console.log('Fetched logs:', res.results?.length);
       setLogs(res.results || []);
       setTotal(res.total || 0);
+      window.scrollTo(0, 0); // Scroll to top
     } catch (error) {
       console.error(error);
     } finally {
@@ -116,6 +121,12 @@ const LogExplorer = () => {
             <option value="app">app</option>
             <option value="db">db</option>
           </select>
+          <select name="range" value={filters.range} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg bg-indigo-50 border-indigo-100 font-medium">
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </select>
           <input name="app" placeholder="App Name" className="px-4 py-2 border rounded-lg" value={filters.app} onChange={handleFilterChange} />
           <input name="vmId" placeholder="VM ID" className="px-4 py-2 border rounded-lg" value={filters.vmId} onChange={handleFilterChange} />
           <input name="start" type="datetime-local" className="px-4 py-2 border rounded-lg" value={filters.start} onChange={handleFilterChange} />
@@ -168,12 +179,11 @@ const LogExplorer = () => {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                      Number(log.parsedData?.status) >= 500 ? 'bg-red-100 text-red-700' :
-                      Number(log.parsedData?.status) >= 400 ? 'bg-orange-100 text-orange-700' :
-                      Number(log.parsedData?.status) >= 300 ? 'bg-blue-100 text-blue-700' :
-                      'bg-green-100 text-green-700'
-                    }`}
+                      className={`px-2 py-1 rounded text-xs font-medium ${Number(log.parsedData?.status) >= 500 ? 'bg-red-100 text-red-700' :
+                        Number(log.parsedData?.status) >= 400 ? 'bg-orange-100 text-orange-700' :
+                          Number(log.parsedData?.status) >= 300 ? 'bg-blue-100 text-blue-700' :
+                            'bg-green-100 text-green-700'
+                        }`}
                       onClick={(e) => { e.stopPropagation(); quickFilter('status', log.parsedData?.status); }}
                     >
                       {log.parsedData?.status || 'N/A'}
