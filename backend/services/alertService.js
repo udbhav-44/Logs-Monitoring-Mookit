@@ -34,6 +34,10 @@ const checkAndAlert = async () => {
                 count() as count,
                 max(timestamp) as lastSeen,
                 groupUniqArray(uid) as uids,
+                groupUniqArray(vmId) as vms,
+                groupUniqArray(app) as apps,
+                groupUniqArray(sourceType) as sources,
+                groupUniqArray(url) as urls,
                 argMax(userAgent, timestamp) as lastUserAgent
             FROM logs
             WHERE ${timeFilter} AND status IN (401, 403) AND ip != ''
@@ -57,6 +61,10 @@ const checkAndAlert = async () => {
                     count: row.count,
                     time: row.lastSeen,
                     uids: row.uids,
+                    vms: row.vms,
+                    apps: row.apps,
+                    sources: row.sources,
+                    urls: row.urls,
                     userAgent: row.lastUserAgent
                 });
                 alertCache.set(key, Date.now());
@@ -78,26 +86,39 @@ const sendAlertEmail = async (alerts) => {
     const htmlContent = `
         <h2>Security Alert: High Severity Anomalies Detected</h2>
         <p>The following suspicious activities were detected in the last 15 minutes:</p>
-        <table style="border-collapse: collapse; width: 100%;">
+        <table style="border-collapse: collapse; width: 100%; font-size: 12px;">
             <thead>
                 <tr style="background-color: #f2f2f2;">
-                    <th style="border: 1px solid #ddd; padding: 8px;">Type</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Actor (IP)</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Count</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Users Involved</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">User Agent</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">Time</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Type</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Actor (IP)</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Count</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Targets (VM/App)</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Sources</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Target URLs</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Users Involved</th>
+                    <th style="border: 1px solid #ddd; padding: 6px;">Time</th>
                 </tr>
             </thead>
             <tbody>
                 ${alerts.map(a => `
                     <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px; color: red; font-weight: bold;">${a.type}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${a.actor}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${a.count}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${(a.uids || []).join(', ')}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px; font-size: 10px;">${a.userAgent || 'N/A'}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${new Date(a.time).toLocaleString()}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; color: red; font-weight: bold;">${a.type}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">
+                            ${a.actor}<br>
+                            <span style="color: #666; font-size: 10px;">${a.userAgent || 'UA N/A'}</span>
+                        </td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">${a.count}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">
+                            <strong>VMs:</strong> ${(a.vms || []).join(', ')}<br>
+                            <strong>Apps:</strong> ${(a.apps || []).join(', ')}
+                        </td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">${(a.sources || []).join(', ')}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; max-width: 200px; word-wrap: break-word;">
+                            ${(a.urls || []).slice(0, 5).join('<br>')}
+                            ${(a.urls || []).length > 5 ? '<br>...more' : ''}
+                        </td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">${(a.uids || []).slice(0, 10).join(', ')}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">${new Date(a.time).toLocaleString()}</td>
                     </tr>
                 `).join('')}
             </tbody>
