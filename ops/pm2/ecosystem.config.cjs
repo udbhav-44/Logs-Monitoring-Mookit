@@ -4,7 +4,7 @@ module.exports = {
       name: 'log-backend',
       cwd: './backend',
       script: 'server.js',
-      instances: 'max',
+      instances: '10',
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production'

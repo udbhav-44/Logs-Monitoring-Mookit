@@ -1,11 +1,14 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const cors = require('cors');
-const connectDB = require('./config/db');
-
 dotenv.config();
 
-connectDB();
+const cors = require('cors');
+const { connectClickHouse } = require('./config/clickhouse');
+const cron = require('node-cron');
+const alertService = require('./services/alertService');
+
+connectClickHouse();
+
 
 const app = express();
 
@@ -34,6 +37,11 @@ const server = app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
     startOverviewPrecompute();
     startApplicationsPrecompute();
+
+    // Schedule Security Alert Check (Every 5 minutes)
+    cron.schedule('*/5 * * * *', () => {
+        alertService.checkAndAlert();
+    });
 });
 
 server.keepAliveTimeout = Number(process.env.HTTP_KEEPALIVE_TIMEOUT_MS) || 60000;
