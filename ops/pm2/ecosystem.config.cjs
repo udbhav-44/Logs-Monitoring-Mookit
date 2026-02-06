@@ -23,8 +23,8 @@ module.exports = {
     {
       name: 'log-frontend',
       cwd: './frontend',
-      script: 'node_modules/.bin/vite',
-      args: 'preview --host 0.0.0.0 --port 5173',
+      script: 'npm',
+      args: 'run start',
       instances: 1,
       exec_mode: 'fork',
       env: {
