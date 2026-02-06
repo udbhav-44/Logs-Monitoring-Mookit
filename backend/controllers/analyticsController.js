@@ -474,6 +474,9 @@ const getSuspiciousActivity = async (req, res) => {
                 count() as count,
                 max(timestamp) as lastSeen,
                 groupUniqArray(uid) as uids,
+                groupUniqArray(vmId) as vmIds,
+                groupUniqArray(app) as apps,
+                groupUniqArray(sourceType) as sources,
                 argMax(userAgent, timestamp) as lastUserAgent
             FROM logs
             WHERE ${timeRange} AND status IN (401, 403) AND ip != ''
@@ -492,6 +495,9 @@ const getSuspiciousActivity = async (req, res) => {
                 countIf(status >= 400) as errors,
                 max(timestamp) as lastSeen,
                 groupUniqArray(uid) as uids,
+                groupUniqArray(vmId) as vmIds,
+                groupUniqArray(app) as apps,
+                groupUniqArray(sourceType) as sources,
                 argMax(userAgent, timestamp) as lastUserAgent
             FROM logs
             WHERE ${timeRange} AND ip != ''
@@ -509,6 +515,9 @@ const getSuspiciousActivity = async (req, res) => {
                 count() as count,
                 max(timestamp) as lastSeen,
                 groupUniqArray(uid) as uids,
+                groupUniqArray(vmId) as vmIds,
+                groupUniqArray(app) as apps,
+                groupUniqArray(sourceType) as sources,
                 argMax(userAgent, timestamp) as lastUserAgent
             FROM logs
             WHERE ${timeRange} AND ip != ''
@@ -536,6 +545,9 @@ const getSuspiciousActivity = async (req, res) => {
                 description: `High number of authentication failures (${row.count}).`,
                 lastSeen: row.lastSeen,
                 uids: row.uids || [],
+                vmIds: row.vmIds || [],
+                apps: row.apps || [],
+                sources: row.sources || [],
                 userAgent: row.lastUserAgent || ''
             });
         });
@@ -554,6 +566,9 @@ const getSuspiciousActivity = async (req, res) => {
                 description: `${rate}% error rate (${row.errors}/${row.total} requests failed).`,
                 lastSeen: row.lastSeen,
                 uids: row.uids || [],
+                vmIds: row.vmIds || [],
+                apps: row.apps || [],
+                sources: row.sources || [],
                 userAgent: row.lastUserAgent || ''
             });
         });
@@ -571,6 +586,9 @@ const getSuspiciousActivity = async (req, res) => {
                 description: `Abnormally high request volume (${row.count} requests).`,
                 lastSeen: row.lastSeen,
                 uids: row.uids || [],
+                vmIds: row.vmIds || [],
+                apps: row.apps || [],
+                sources: row.sources || [],
                 userAgent: row.lastUserAgent || ''
             });
         });

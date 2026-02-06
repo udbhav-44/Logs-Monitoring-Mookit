@@ -116,6 +116,21 @@ const Security = () => {
               </div>
             </div>
             <p className="text-sm text-gray-600">{alert.description}</p>
+            {alert.apps && alert.apps.length > 0 && (
+              <p className="text-xs text-gray-600 mt-2 font-medium">
+                Apps: <span className="text-indigo-600">{alert.apps.join(', ')}</span>
+              </p>
+            )}
+            {alert.sources && alert.sources.length > 0 && (
+              <p className="text-xs text-gray-600 mt-1 font-medium">
+                Source: <span className="text-indigo-600">{alert.sources.join(', ')}</span>
+              </p>
+            )}
+            {alert.vmIds && alert.vmIds.length > 0 && (
+              <p className="text-xs text-gray-600 mt-1 font-medium">
+                VMs: <span className="text-indigo-600">{alert.vmIds.join(', ')}</span>
+              </p>
+            )}
             {alert.uids && alert.uids.length > 0 && (
               <p className="text-xs text-indigo-600 mt-2 font-medium">
                 Users: {alert.uids.join(', ')}
