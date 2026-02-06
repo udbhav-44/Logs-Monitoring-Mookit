@@ -327,8 +327,16 @@ const searchLogs = async (req, res) => {
             OFFSET ${offset}
         `;
 
-        const result = await client.query({ query, format: 'JSONEachRow' });
+        const countQuery = `SELECT count() as count FROM logs WHERE ${whereClause}`;
+
+        const [result, countResult] = await Promise.all([
+            client.query({ query, format: 'JSONEachRow' }),
+            client.query({ query: countQuery, format: 'JSONEachRow' })
+        ]);
+
         const rows = await result.json();
+        const countRows = await countResult.json();
+        const total = Number(countRows[0]?.count || 0);
 
         const results = rows.map(r => ({
             timestamp: r.timestamp,
@@ -354,7 +362,7 @@ const searchLogs = async (req, res) => {
             results,
             page: Number(page),
             pageSize: limitVal,
-            total: 1000 // Approximate - full count queries can be expensive
+            total
         });
     } catch (error) {
         console.error('Search Logs Error:', error);

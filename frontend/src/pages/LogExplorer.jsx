@@ -28,6 +28,8 @@ const LogExplorer = () => {
     range: 'all'
   });
 
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+
   const fetchLogs = async (nextPage = page, overrideFilters = null) => {
     setLoading(true);
     setLogs([]); // Force clear to prevent appending illusion
@@ -36,7 +38,7 @@ const LogExplorer = () => {
       const effectiveFilters = overrideFilters ? { ...overrideFilters } : { ...filters };
       const res = await searchLogs({
         page: nextPage,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         ...Object.fromEntries(Object.entries(effectiveFilters).filter(([_, v]) => v))
       });
       console.log('Fetched logs:', res.results?.length);
@@ -71,7 +73,7 @@ const LogExplorer = () => {
     if (skipPageFetchRef.current) return;
     fetchLogs(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, pageSize]);
 
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -94,7 +96,7 @@ const LogExplorer = () => {
     fetchLogs(1, updated);
   };
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
   return (
     <div className="space-y-6">
@@ -103,10 +105,24 @@ const LogExplorer = () => {
           <h1 className="text-2xl font-bold text-gray-800">Log Explorer</h1>
           <p className="text-gray-500">Search by UID, course, IP, status, source, and time range.</p>
         </div>
-        <button onClick={() => fetchLogs(page)} className="text-gray-600 hover:text-indigo-600 flex items-center gap-2">
-          <RefreshCw size={18} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="border rounded-lg text-sm px-3 py-2 bg-white"
+          >
+            {[25, 50, 100, 200, 500].map(size => (
+              <option key={size} value={size}>{size} per page</option>
+            ))}
+          </select>
+          <button onClick={() => fetchLogs(page)} className="text-gray-600 hover:text-indigo-600 flex items-center gap-2">
+            <RefreshCw size={18} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -145,6 +161,33 @@ const LogExplorer = () => {
           <div className="flex gap-2">
             <span className="font-bold text-gray-700">{total}</span>
             <span className="text-gray-500">results</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={page === 1}
+              onClick={() => {
+                const next = Math.max(1, page - 1);
+                setPage(next);
+                setSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)), page: next });
+              }}
+              className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              {page} / {totalPages}
+            </span>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => {
+                const next = page + 1;
+                setPage(next);
+                setSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)), page: next });
+              }}
+              className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
           {loading && <span className="text-sm text-gray-500">Loading...</span>}
         </div>
