@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # 1. ClickHouse Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: log_monitor_db
+    ports:
+      - "8123:8123"  # HTTP Interface
+      - "9000:9000"  # Native Client Interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - log_network
+
+  # 2. Backend API
+  backend:
+    build: ./backend
+    container_name: log_monitor_backend
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - CLICKHOUSE_HOST=http://clickhouse:8123
+      - CLICKHOUSE_DB=logs
+      - ALERT_TO_EMAIL=${ALERT_TO_EMAIL} # Pass from host
+      - SMTP_USER=${SMTP_USER}           # Pass from host
+      - SMTP_PASS=${SMTP_PASS}           # Pass from host
+    networks:
+      - log_network
+    restart: always
+
+  # 3. Frontend UI
+  frontend:
+    build: ./frontend
+    container_name: log_monitor_frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"        # Host Port 80 -> Container 80
+    networks:
+      - log_network
+    restart: always
+
+volumes:
+  clickhouse_data:
+
+networks:
+  log_network:
+    driver: bridge

@@ -177,7 +177,35 @@ sudo systemctl enable --now log-backend log-agent log-frontend
 ```
 
 ### sysctl (kernel tuning)
-```bash
-sudo cp ops/sysctl.d/99-log-monitoring.conf /etc/sysctl.d/
-sudo sysctl --system
-```
+
+## Docker Deployment
+
+You can run the entire stack (Backend, Frontend, ClickHouse) using Docker Compose.
+
+### Prerequisites
+- Docker & Docker Compose installed.
+
+### Run with Docker
+1. **Configure Environment**
+   - Ensure `backend/.env` has the correct `ALERT_TO_EMAIL` and SMTP settings.
+   - The `CLICKHOUSE_HOST` in `backend/.env` will be overridden by docker-compose to point to the `clickhouse` container automatically.
+
+2. **Start Services**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. **Access Application**
+   - Frontend: `http://localhost:80` (or just `http://localhost`)
+   - Backend API: `http://localhost:5002`
+   - ClickHouse: `http://localhost:8123`
+
+4. **Stop Services**
+   ```bash
+   docker-compose down
+   ```
+
+5. **View Logs**
+   ```bash
+   docker-compose logs -f
+   ```
