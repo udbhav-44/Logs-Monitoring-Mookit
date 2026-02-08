@@ -146,6 +146,21 @@ HTTP_TIMEOUT_MS=10000
 - **Course column**: visible in the table and clickable for quick filtering.
 - **Full-text search**: searches URL/message/raw text.
 
+## Security & Threat Detection
+
+The system includes an automated threat detection engine that scans logs every 15 minutes for suspicious patterns.
+
+**Detected Threats:**
+- **Brute Force Attacks**: High volume of 401/403 errors from a single IP (>20 reqs/15min).
+- **SQL Injection (SQLi)**: Patterns like `UNION SELECT`, `OR 1=1`, `DROP TABLE`.
+- **Cross-Site Scripting (XSS)**: Patterns like `<script>`, `javascript:`, `onerror=`.
+- **Path Traversal**: Attempts to access parent directories (`../`, `..%2F`, `/etc/passwd`).
+- **Sensitive File Access**: Access attempts for `.env`, `.git`, `.aws` config files.
+
+**Alerting:**
+- Alerts are aggregated and sent via email.
+- **Cooldown**: To prevent spam, alerts for the same actor and threat type are silenced for 1 hour after the first notification.
+
 ## Multi-VM Setup
 
 1. Copy the `agent/` folder to each VM.
@@ -166,6 +181,7 @@ pm2 start ops/pm2/ecosystem.config.cjs
 pm2 save
 pm2 startup
 ```
+*Note: The security alert cron job is designed to run only on the first instance (`NODE_APP_INSTANCE=0`) to prevent duplicate emails.*
 
 ### systemd (auto-restart on boot)
 ```bash
