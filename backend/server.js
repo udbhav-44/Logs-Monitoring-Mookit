@@ -39,9 +39,12 @@ const server = app.listen(PORT, HOST, () => {
     startApplicationsPrecompute();
 
     // Schedule Security Alert Check (Every 5 minutes)
-    cron.schedule('*/5 * * * *', () => {
-        alertService.checkAndAlert();
-    });
+    // Only run on the first instance to avoid duplicate alerts in cluster mode
+    if (process.env.NODE_APP_INSTANCE === '0' || process.env.NODE_APP_INSTANCE === undefined) {
+        cron.schedule('*/5 * * * *', () => {
+            alertService.checkAndAlert();
+        });
+    }
 });
 
 server.keepAliveTimeout = Number(process.env.HTTP_KEEPALIVE_TIMEOUT_MS) || 60000;
