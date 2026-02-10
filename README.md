@@ -8,8 +8,9 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
 - **Strict format parsing**: Accepts only well-formed nginx combined logs and your app log format.
 - **Fast analytics**: Powered by ClickHouse for high-performance querying of millions of log lines.
 - **Explorer + filters**: Full-text search plus structured filters (IP, UID, course, status, source, app, VM, time range).
-- **Security Alerts**: Automated email alerts for suspicious activity (Brute force, etc.).
+- **Security Alerts**: Automated email alerts for suspicious activity (Brute force, Traffic Spikes, etc.).
 - **Multi-VM ready**: Agent is portable and configurable per VM.
+- **Advanced Metrics**: Track Average Response Size, RPS, and Peak RPM.
 
 ## Architecture
 
@@ -156,6 +157,7 @@ The system includes an automated threat detection engine that scans logs every 1
 - **Cross-Site Scripting (XSS)**: Patterns like `<script>`, `javascript:`, `onerror=`.
 - **Path Traversal**: Attempts to access parent directories (`../`, `..%2F`, `/etc/passwd`).
 - **Sensitive File Access**: Access attempts for `.env`, `.git`, `.aws` config files.
+- **Traffic Spikes**: Alerts if current RPM exceeds `24h Avg + 2 * StdDev`.
 
 **Alerting:**
 - Alerts are aggregated and sent via email.
@@ -235,4 +237,4 @@ You can run the entire stack (Backend, Frontend, ClickHouse) using Docker Compos
 4. ~~Avgs requests and std deviations~~
 5. ~~On the overview page, options to filter the VMs~~
 6. LDAP login
-7. Custom Alert Rules COnfiguration
+7. Custom Alert Rules Configuration
