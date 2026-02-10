@@ -225,3 +225,14 @@ You can run the entire stack (Backend, Frontend, ClickHouse) using Docker Compos
    ```bash
    docker-compose logs -f
    ```
+
+
+## TO-DO
+
+1. ~~Total requests Spike -> Alert~~
+2. API keys ingest
+3. Database -> buckets and things
+4. ~~Avgs requests and std deviations~~
+5. ~~On the overview page, options to filter the VMs~~
+6. LDAP login
+7. Custom Alert Rules COnfiguration

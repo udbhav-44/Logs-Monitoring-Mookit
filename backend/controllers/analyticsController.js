@@ -11,7 +11,8 @@ const toNumber = (value, fallback) => {
 const CACHE_TTL_MS = {
     overview: toNumber(process.env.OVERVIEW_CACHE_TTL_MS, 5000),
     suspicious: toNumber(process.env.SUSPICIOUS_CACHE_TTL_MS, 15000),
-    applications: toNumber(process.env.APPLICATIONS_CACHE_TTL_MS, 30000)
+    applications: toNumber(process.env.APPLICATIONS_CACHE_TTL_MS, 30000),
+    filters: toNumber(process.env.FILTERS_CACHE_TTL_MS, 60000)
 };
 
 const cache = new Map();
@@ -55,6 +56,16 @@ const getTimeRangeSQL = (params = {}, defaultHours = 8760) => {
     };
     const hours = rangeMap[String(params.range || '').toLowerCase()] || defaultHours;
     return `timestamp >= now() - INTERVAL ${hours} HOUR`;
+};
+
+const getWindowSeconds = (range) => {
+    const map = {
+        '24h': 24 * 3600,
+        '7d': 7 * 24 * 3600,
+        '30d': 30 * 24 * 3600,
+        'all': 365 * 24 * 3600
+    };
+    return map[String(range || '24h').toLowerCase()] || 24 * 3600;
 };
 
 const buildWhereClause = (params) => {
@@ -138,6 +149,26 @@ const getOverviewStats = async (req, res) => {
             LIMIT 10
         `;
 
+        // Performance Metrics
+        const perfQuery = `
+            SELECT
+                avg(responseSize) as avgResponseSize,
+                sum(responseSize) as totalBytes
+            FROM logs
+            WHERE ${whereClause} AND responseSize IS NOT NULL
+        `;
+
+        // Peak RPM (Max requests in a minute)
+        const peakRpmQuery = `
+            SELECT max(count) as peakRpm
+            FROM (
+                SELECT toStartOfMinute(timestamp) as minute, count() as count
+                FROM logs
+                WHERE ${whereClause}
+                GROUP BY minute
+            )
+        `;
+
         // Top IPs
         const topIpsQuery = `
             SELECT ip, count() as count 
@@ -172,15 +203,20 @@ const getOverviewStats = async (req, res) => {
             LIMIT 10
         `;
 
-        const [countsRes, statusResult, trafficResult, topEndpoints, topIps, topUids, appsResult] = await Promise.all([
+        const [countsRes, statusResult, trafficResult, topEndpoints, topIps, topUids, appsResult, perfRes, peakRpmRes] = await Promise.all([
             client.query({ query: countsQuery, format: 'JSONEachRow' }).then(r => r.json()),
             client.query({ query: statusQuery, format: 'JSONEachRow' }).then(r => r.json()),
             client.query({ query: trafficQuery, format: 'JSONEachRow' }).then(r => r.json()),
             client.query({ query: topEndpointsQuery, format: 'JSONEachRow' }).then(r => r.json()),
             client.query({ query: topIpsQuery, format: 'JSONEachRow' }).then(r => r.json()),
             client.query({ query: topUidsQuery, format: 'JSONEachRow' }).then(r => r.json()),
-            client.query({ query: appsQuery, format: 'JSONEachRow' }).then(r => r.json())
+            client.query({ query: appsQuery, format: 'JSONEachRow' }).then(r => r.json()),
+            client.query({ query: perfQuery, format: 'JSONEachRow' }).then(r => r.json()),
+            client.query({ query: peakRpmQuery, format: 'JSONEachRow' }).then(r => r.json())
         ]);
+
+        const perfData = perfRes[0] || {};
+        const peakRpmData = peakRpmRes[0] || {};
 
         const overall = Number(countsRes[0]?.overall || 0);
         const windowCount = Number(countsRes[0]?.window || 0);
@@ -217,7 +253,12 @@ const getOverviewStats = async (req, res) => {
                 vmIds: r.vmIds || []
             })),
             range: { start: null, end: null },
-            bucketUnit: windowPeriod
+            bucketUnit: windowPeriod,
+            performance: {
+                avgResponseSize: Math.round(Number(perfData.avgResponseSize || 0)),
+                peakRpm: Number(peakRpmData.peakRpm || 0),
+                avgRps: windowCount > 0 ? (windowCount / (getWindowSeconds(req.query.range) || 1)).toFixed(2) : 0
+            }
         };
 
         setCached(cacheKey, result, CACHE_TTL_MS.overview);
@@ -533,6 +574,56 @@ const getSuspiciousActivity = async (req, res) => {
             client.query({ query: dosQuery, format: 'JSONEachRow' }).then(r => r.json())
         ]);
 
+
+        // --- Traffic Spike Check ---
+        // 1. Calculate Baseline (Last 24h)
+        const baselineQuery = `
+            SELECT 
+                avg(count) as avgRpm,
+                stddevSamp(count) as stdDevRpm
+            FROM (
+                SELECT toStartOfMinute(timestamp) as minute, count() as count
+                FROM logs
+                WHERE timestamp >= now() - INTERVAL 24 HOUR AND timestamp < now() - INTERVAL 5 MINUTE
+                GROUP BY minute
+            )
+        `;
+
+        // 2. Calculate Current RPM (Last 5 mins)
+        const currentQuery = `
+            SELECT 
+                count() as total,
+                count() / 5 as currentRpm,
+                max(timestamp) as lastSeen
+            FROM logs
+            WHERE timestamp >= now() - INTERVAL 5 MINUTE
+        `;
+
+        const [baselineRes, currentRes] = await Promise.all([
+            client.query({ query: baselineQuery, format: 'JSONEachRow' }).then(r => r.json()),
+            client.query({ query: currentQuery, format: 'JSONEachRow' }).then(r => r.json())
+        ]);
+
+        const baseline = baselineRes[0] || { avgRpm: 0, stdDevRpm: 0 };
+        const current = currentRes[0] || { total: 0, currentRpm: 0, lastSeen: new Date().toISOString() };
+
+        const avgRpm = Number(baseline.avgRpm);
+        const stdDevRpm = Number(baseline.stdDevRpm);
+        const currentRpm = Number(current.currentRpm);
+        const threshold = avgRpm + (2 * stdDevRpm);
+
+        if (currentRpm > threshold && currentRpm > 10) {
+            alerts.push({
+                type: 'traffic_spike',
+                severity: 'high',
+                actor: 'System-Wide',
+                count: Math.round(currentRpm), // Display RPM as count for consistency
+                description: `Traffic Spike: Current RPM (${currentRpm.toFixed(0)}) > Avg (${avgRpm.toFixed(0)}) + 2*StdDev.`,
+                lastSeen: current.lastSeen,
+                uids: [], vmIds: [], apps: [], sources: [], userAgent: 'N/A'
+            });
+        }
+
         const alerts = [];
 
         // Process Brute Force
@@ -600,6 +691,42 @@ const getSuspiciousActivity = async (req, res) => {
     }
 };
 
+// @desc    Get Filters (Apps, VMs)
+const getFilters = async (req, res) => {
+    try {
+        const cacheKey = 'filters';
+        const cached = getCached(cacheKey);
+        if (cached) return res.json(cached);
+
+        const client = getClient();
+        // Look back 7 days to get active components
+        const timeRange = `timestamp >= now() - INTERVAL 7 DAY`;
+
+        const query = `
+            SELECT 
+                groupUniqArray(app) as apps,
+                groupUniqArray(vmId) as vmIds
+            FROM logs
+            WHERE ${timeRange}
+        `;
+
+        const result = await client.query({ query, format: 'JSONEachRow' });
+        const rows = await result.json();
+        const data = rows[0] || {};
+
+        const response = {
+            apps: (data.apps || []).filter(Boolean).sort(),
+            vmIds: (data.vmIds || []).filter(Boolean).sort()
+        };
+
+        setCached(cacheKey, response, CACHE_TTL_MS.filters);
+        res.json(response);
+    } catch (error) {
+        console.error('Get Filters Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 const getUidDirectory = async (req, res) => {
     try {
         const { limit = 100 } = req.query;
@@ -651,6 +778,8 @@ module.exports = {
     searchLogs,
     getUserActivity,
     getSuspiciousActivity,
+    getSuspiciousActivity,
     getApplicationOverview,
-    getUidDirectory
+    getUidDirectory,
+    getFilters
 };

@@ -140,6 +140,61 @@ const checkAndAlert = async () => {
             }
         ];
 
+        // --- Traffic Spike Detection (Avg + 2*StdDev) ---
+        try {
+            // 1. Calculate Baseline (Last 24h)
+            // Group by minute to get RPM distribution
+            const baselineQuery = `
+                SELECT 
+                    avg(count) as avgRpm,
+                    stddevSamp(count) as stdDevRpm
+                FROM (
+                    SELECT toStartOfMinute(timestamp) as minute, count() as count
+                    FROM logs
+                    WHERE timestamp >= now() - INTERVAL 24 HOUR AND timestamp < now() - INTERVAL 5 MINUTE
+                    GROUP BY minute
+                )
+            `;
+            const baselineRes = await client.query({ query: baselineQuery, format: 'JSONEachRow' }).then(r => r.json());
+            const baseline = baselineRes[0] || { avgRpm: 0, stdDevRpm: 0 };
+            const avgRpm = Number(baseline.avgRpm);
+            const stdDevRpm = Number(baseline.stdDevRpm);
+            const threshold = avgRpm + (2 * stdDevRpm);
+
+            // 2. Calculate Current RPM (Last 5 mins)
+            const currentQuery = `
+                SELECT 
+                    count() as total,
+                    count() / 5 as currentRpm
+                FROM logs
+                WHERE timestamp >= now() - INTERVAL 5 MINUTE
+            `;
+            const currentRes = await client.query({ query: currentQuery, format: 'JSONEachRow' }).then(r => r.json());
+            const current = currentRes[0] || { total: 0, currentRpm: 0 };
+            const currentRpm = Number(current.currentRpm);
+
+            // 3. Compare and Alert
+            // Only alert if traffic is significant (e.g., > 10 RPM to avoid noise in low traffic envs)
+            if (currentRpm > threshold && currentRpm > 10) {
+                const key = `Traffic Spike:System`;
+                const lastSent = alertCache.get(key);
+
+                if (!lastSent || (Date.now() - lastSent > ALERT_COOLDOWN_MS)) {
+                    newAlerts.push({
+                        type: 'Traffic Spike',
+                        actor: 'System-Wide',
+                        count: Math.round(currentRpm),
+                        time: new Date().toISOString(),
+                        description: `Current RPM (${currentRpm.toFixed(2)}) is > 2 StdDev above 24h Average (${avgRpm.toFixed(2)} + 2*${stdDevRpm.toFixed(2)} = ${threshold.toFixed(2)}).`,
+                        uids: [], vms: [], apps: [], sources: [], urls: [], userAgent: 'N/A'
+                    });
+                    alertCache.set(key, Date.now());
+                }
+            }
+        } catch (spikeError) {
+            console.error('Error checking traffic spike:', spikeError);
+        }
+
         for (const threat of threats) {
             try {
                 const result = await client.query({ query: threat.query, format: 'JSONEachRow' });

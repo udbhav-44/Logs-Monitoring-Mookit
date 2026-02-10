@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Activity, AlertTriangle, FileText, Shield } from 'lucide-react';
-import { fetchOverview } from '../lib/api';
+import { fetchOverview, fetchFilters } from '../lib/api';
 
 const RANGE_STORAGE_KEY = 'logs.monitoring.dashboard.range';
 const rangeOptions = [
@@ -25,20 +25,30 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [warming, setWarming] = useState(false);
   const [range, setRange] = useState(() => getStoredRange('24h'));
+
+  // Filters
+  const [filters, setFilters] = useState({ apps: [], vmIds: [] });
+  const [selectedApp, setSelectedApp] = useState('');
+  const [selectedVm, setSelectedVm] = useState('');
+
   const hasUserSetRange = useRef(false);
   const refreshInFlight = useRef(false);
   const navigate = useNavigate();
 
   const rangeLabel = rangeOptions.find((option) => option.value === range)?.label || 'Last 24h';
 
-  const load = async (selectedRange = range, options = {}) => {
+  const load = async (selectedRange = range, app = selectedApp, vm = selectedVm, options = {}) => {
     const { silent = false } = options;
     if (refreshInFlight.current) return;
     refreshInFlight.current = true;
     if (!silent && !stats) setLoading(true);
     setError('');
     try {
-      const res = await fetchOverview({ range: selectedRange });
+      const params = { range: selectedRange };
+      if (app) params.app = app;
+      if (vm) params.vmId = vm;
+
+      const res = await fetchOverview(params);
       const data = res?.data || {};
       if (res?.status === 202) {
         setWarming(true);
@@ -55,20 +65,27 @@ const Dashboard = () => {
     }
   };
 
+  // Load Filters
   useEffect(() => {
-    load(range);
+    fetchFilters().then(data => {
+      setFilters({ apps: data.apps || [], vmIds: data.vmIds || [] });
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    load(range, selectedApp, selectedVm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+  }, [range, selectedApp, selectedVm]);
 
   useEffect(() => {
     const refreshMs = Number(import.meta.env.VITE_DASHBOARD_REFRESH_MS) || 5000;
     if (Number.isNaN(refreshMs) || refreshMs <= 0) return undefined;
     const interval = setInterval(() => {
-      load(range, { silent: true });
+      load(range, selectedApp, selectedVm, { silent: true });
     }, refreshMs);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+  }, [range, selectedApp, selectedVm]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -156,6 +173,34 @@ const Dashboard = () => {
           {warming && <p className="text-sm text-gray-500 mt-1">Warming up overview metrics...</p>}
         </div>
         <div className="flex items-center gap-3">
+
+          {/* Filters */}
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedApp}
+              onChange={(e) => setSelectedApp(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm bg-white"
+            >
+              <option value="">All Apps</option>
+              {filters.apps.map(app => (
+                <option key={app} value={app}>{app}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedVm}
+              onChange={(e) => setSelectedVm(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm bg-white"
+            >
+              <option value="">All VMs</option>
+              {filters.vmIds.map(vm => (
+                <option key={vm} value={vm}>{vm}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="h-6 w-px bg-gray-300 mx-2"></div>
+
           <div className="text-sm text-gray-500">Range</div>
           <select
             value={range}
@@ -163,13 +208,13 @@ const Dashboard = () => {
               hasUserSetRange.current = true;
               setRange(event.target.value);
             }}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-3 py-2 border rounded-lg text-sm bg-white"
           >
             {rangeOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
-          <button onClick={() => load(range)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+          <button onClick={() => load(range, selectedApp, selectedVm)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
             Refresh
           </button>
         </div>
@@ -189,6 +234,43 @@ const Dashboard = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Avg Response Size</p>
+              <h3 className="text-2xl font-bold text-gray-900">{(safeStats.performance?.avgResponseSize || 0).toLocaleString()} B</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-teal-50">
+              <Activity className="text-teal-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Avg Requests/Sec</p>
+              <h3 className="text-2xl font-bold text-gray-900">{safeStats.performance?.avgRps || 0}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-purple-50">
+              <Activity className="text-purple-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Peak Requests/Min</p>
+              <h3 className="text-2xl font-bold text-gray-900">{(safeStats.performance?.peakRpm || 0).toLocaleString()}</h3>
+            </div>
+            <div className="p-3 rounded-lg bg-pink-50">
+              <Activity className="text-pink-600" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -340,7 +422,7 @@ const Dashboard = () => {
           {applications.length === 0 && <p className="text-gray-500 text-sm">No application data.</p>}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -20,5 +20,6 @@ export const fetchUids = (params = {}) => api.get('/api/analytics/uids', { param
 export const fetchSuspicious = (params = {}) => api.get('/api/analytics/suspicious', { params }).then(res => res.data);
 export const fetchApplications = (params = {}) =>
   api.get('/api/analytics/applications', { params }).then(res => ({ data: res.data, status: res.status }));
+export const fetchFilters = () => api.get('/api/analytics/filters').then(res => res.data);
 
 export default api;

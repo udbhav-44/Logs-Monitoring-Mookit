@@ -6,10 +6,12 @@ const {
     getUserActivity,
     getSuspiciousActivity,
     getApplicationOverview,
-    getUidDirectory
+    getUidDirectory,
+    getFilters
 } = require('../controllers/analyticsController');
 
 router.get('/overview', getOverviewStats);
+router.get('/filters', getFilters);
 router.get('/search', searchLogs);
 router.get('/activity', getUserActivity);
 router.get('/uids', getUidDirectory);
