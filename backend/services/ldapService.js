@@ -45,7 +45,16 @@ const authenticate = (username, password) => {
 
                 res.on('searchEntry', (entry) => {
                     userDN = entry.objectName;
-                    userEntry = entry.object;
+
+                    // Manually construct userEntry from attributes
+                    userEntry = {};
+                    if (entry.attributes) {
+                        entry.attributes.forEach((attr) => {
+                            if (attr.vals && attr.vals.length > 0) {
+                                userEntry[attr.type] = attr.vals[0];
+                            }
+                        });
+                    }
                 });
 
                 res.on('searchReference', (referral) => {
@@ -53,6 +62,7 @@ const authenticate = (username, password) => {
                 });
 
                 res.on('error', (err) => {
+                    console.error('[LDAP] Search Error:', err);
                     client.unbind();
                     reject(err);
                 });
