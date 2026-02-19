@@ -163,6 +163,16 @@ The system includes an automated threat detection engine that scans logs every 1
 - Alerts are aggregated and sent via email.
 - **Cooldown**: To prevent spam, alerts for the same actor and threat type are silenced for 1 hour after the first notification.
 
+## Authentication & Security
+- **LDAP Integration**: Secure login using IITK LDAP credentials (`ldap.cc.iitk.ac.in`).
+- **Session Management**: JWT-based stateless authentication with `localStorage` persistence.
+- **Protected Routes**: Frontend routes and Backend APIs (`/api/analytics/*`) are secured.
+- **Auto-Logout**: "Sign Out" functionality to clear sessions.
+
+## Timezone Handling
+- **IST Enforcement**: System-wide enforcement of Indian Standard Time (IST, UTC+05:30).
+- **Display**: All timestamps in the Logs Explorer and details view are formatted to `Asia/Kolkata`.
+
 ## Multi-VM Setup
 
 1. Copy the `agent/` folder to each VM.
@@ -236,5 +246,5 @@ You can run the entire stack (Backend, Frontend, ClickHouse) using Docker Compos
 3. Database -> buckets and things
 4. ~~Avgs requests and std deviations~~
 5. ~~On the overview page, options to filter the VMs~~
-6. LDAP login
+6. ~~LDAP login~~
 7. Custom Alert Rules Configuration
