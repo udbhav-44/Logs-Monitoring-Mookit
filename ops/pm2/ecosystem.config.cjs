@@ -28,7 +28,7 @@ module.exports = {
       name: 'log-frontend',
       cwd: './frontend',
       script: 'npm',
-      args: 'run start',
+      args: 'run prod',
       instances: 1,
       exec_mode: 'fork',
       watch: true,
