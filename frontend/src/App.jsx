@@ -17,18 +17,31 @@ const Placeholder = ({ title }) => (
   </div>
 );
 
+import Login from './pages/Login';
+import PrivateRoute from './components/PrivateRoute';
+
 function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/logs" element={<LogExplorer />} />
-          <Route path="/activity" element={<UserActivity />} />
-          <Route path="/security" element={<Security />} />
-          <Route path="/applications" element={<Applications />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/logs" element={<LogExplorer />} />
+                  <Route path="/activity" element={<UserActivity />} />
+                  <Route path="/security" element={<Security />} />
+                  <Route path="/applications" element={<Applications />} />
+                </Routes>
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   );
 }

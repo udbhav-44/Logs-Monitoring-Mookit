@@ -21,8 +21,12 @@ const ingestRoutes = require('./routes/ingestRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const { startOverviewPrecompute, startApplicationsPrecompute } = require('./controllers/analyticsController');
 
+const authRoutes = require('./routes/authRoutes');
+const { protect } = require('./middleware/authMiddleware');
+
 app.use('/api/ingest', ingestRoutes);
-app.use('/api/analytics', analyticsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/analytics', protect, analyticsRoutes);
 
 // Routes placeholder
 app.get('/', (req, res) => {

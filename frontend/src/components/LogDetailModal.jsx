@@ -34,7 +34,7 @@ const LogDetailModal = ({ log, onClose }) => {
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div>
             <p className="text-xs text-gray-500">Log Detail</p>
-            <h3 className="text-lg font-semibold text-gray-900">{new Date(log.timestamp).toLocaleString()}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{new Date(log.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</h3>
           </div>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-sm px-3 py-1 border border-gray-200 rounded-lg bg-white">
             Close

@@ -40,12 +40,18 @@ const buildCacheKey = (prefix, params = {}) => {
 
 const getTimeRangeSQL = (params = {}, defaultHours = 8760) => {
     if (params.start && params.end) {
-        const startDate = new Date(params.start);
-        const endDate = new Date(params.end);
+        // Force IST interpretation if no timezone provided
+        const startStr = params.start.includes('+') || params.start.includes('Z') ? params.start : `${params.start}+05:30`;
+        const endStr = params.end.includes('+') || params.end.includes('Z') ? params.end : `${params.end}+05:30`;
+
+        const startDate = new Date(startStr);
+        const endDate = new Date(endStr);
         return `timestamp >= toDateTime(${Math.floor(startDate.getTime() / 1000)}) AND timestamp <= toDateTime(${Math.floor(endDate.getTime() / 1000)})`;
     }
     if (params.start) {
-        const startDate = new Date(params.start);
+        // Force IST interpretation if no timezone provided
+        const startStr = params.start.includes('+') || params.start.includes('Z') ? params.start : `${params.start}+05:30`;
+        const startDate = new Date(startStr);
         return `timestamp >= toDateTime(${Math.floor(startDate.getTime() / 1000)})`;
     }
     const rangeMap = {

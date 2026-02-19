@@ -214,7 +214,7 @@ const LogExplorer = () => {
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => setSelectedLog(log)}
                 >
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(log.timestamp).toLocaleString()}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(log.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                   <td className="px-4 py-3 capitalize text-gray-700">{log.sourceType || log.appInfo?.source || '-'}</td>
                   <td className="px-4 py-3 text-gray-700">
                     <div className="font-semibold">{log.appInfo?.name || '-'}</div>

@@ -1,51 +1,78 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, List, User, ShieldAlert, Activity, Layers } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import {
+    LayoutDashboard,
+    FileText,
+    Activity,
+    Shield,
+    AppWindow,
+    LogOut
+} from 'lucide-react';
 
 const Layout = ({ children }) => {
-    const location = useLocation();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+    };
 
     const navItems = [
-        { path: '/', label: 'Overview', icon: <LayoutDashboard size={20} /> },
-        { path: '/logs', label: 'Log Explorer', icon: <List size={20} /> },
-        { path: '/activity', label: 'User Activity', icon: <User size={20} /> },
-        { path: '/applications', label: 'Applications', icon: <Layers size={20} /> },
-        { path: '/security', label: 'Security', icon: <ShieldAlert size={20} /> },
+        { path: '/', icon: LayoutDashboard, label: 'Overview' },
+        { path: '/logs', icon: FileText, label: 'Log Explorer' },
+        { path: '/activity', icon: Activity, label: 'User Activity' },
+        { path: '/applications', icon: AppWindow, label: 'Applications' },
+        { path: '/security', icon: Shield, label: 'Security' },
     ];
 
     return (
         <div className="flex h-screen bg-gray-50">
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200">
-                <div className="p-6 border-b border-gray-100">
-                    <div className="flex items-center gap-2 font-bold text-xl text-indigo-600">
-                        <Activity />
-                        <span>OOA Log Monitor</span>
-                    </div>
+            <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+                <div className="p-6">
+                    <h1 className="text-xl font-bold text-indigo-600 flex items-center gap-2">
+                        <Activity className="w-6 h-6" />
+                        OOA Log Monitor
+                    </h1>
                 </div>
-                <nav className="p-4 space-y-1">
+
+                <nav className="flex-1 px-4 space-y-1">
                     {navItems.map((item) => (
-                        <Link
+                        <NavLink
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === item.path
-                                    ? 'bg-indigo-50 text-indigo-700'
-                                    : 'text-gray-600 hover:bg-gray-50'
-                                }`}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
+                                    ? 'bg-indigo-50 text-indigo-600'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                }`
+                            }
                         >
-                            {item.icon}
+                            <item.icon className="w-5 h-5" />
                             {item.label}
-                        </Link>
+                        </NavLink>
                     ))}
                 </nav>
-            </aside>
+
+                {/* User Profile / Logout Section */}
+                <div className="p-4 border-t border-gray-200">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        Sign Out
+                    </button>
+                </div>
+            </div>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     {children}
                 </div>
-            </main>
+            </div>
         </div>
     );
 };
