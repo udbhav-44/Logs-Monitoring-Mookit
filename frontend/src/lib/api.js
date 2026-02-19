@@ -55,3 +55,7 @@ export const fetchApplications = (params = {}) =>
 export const fetchFilters = () => api.get('/api/analytics/filters').then(res => res.data);
 
 export default api;
+
+export const deletePartition = (vmId, app, month) => {
+  return api.delete('/api/data/partition', { data: { vmId, app, month } });
+};

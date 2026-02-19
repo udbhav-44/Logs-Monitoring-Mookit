@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { fetchApplications } from '../lib/api';
+import DeleteLogModal from '../components/DeleteLogModal';
 
 const Applications = () => {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [warming, setWarming] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -65,7 +67,15 @@ const Applications = () => {
                 <Layers className="text-indigo-600" size={18} />
                 <p className="font-semibold text-gray-900">{app.app}</p>
               </div>
-              <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{app.vmIds.length} VM(s)</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDeleteModal({ app: app.app, vmIds: app.vmIds })}
+                  className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                >
+                  Manage Storage
+                </button>
+                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{app.vmIds.length} VM(s)</span>
+              </div>
             </div>
             <p className="text-xs text-gray-500 mb-2">VMs: {app.vmIds.join(', ')}</p>
             <div className="flex justify-between mb-3">
@@ -92,6 +102,18 @@ const Applications = () => {
       </div>
 
       {apps.length === 0 && !loading && <p className="text-gray-500">No application data yet.</p>}
+
+      {deleteModal && (
+        <DeleteLogModal
+          app={deleteModal.app}
+          vmIds={deleteModal.vmIds}
+          onClose={() => setDeleteModal(null)}
+          onSuccess={() => {
+            load();
+            alert('Logs deleted successfully.');
+          }}
+        />
+      )}
     </div>
   );
 };
