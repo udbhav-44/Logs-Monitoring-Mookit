@@ -6,6 +6,8 @@ module.exports = {
       script: 'server.js',
       instances: '10',
       exec_mode: 'cluster',
+      watch: true,
+      ignore_watch: ['node_modules', 'logs'],
       env: {
         NODE_ENV: 'production'
       }
@@ -16,6 +18,8 @@ module.exports = {
       script: 'collector.js',
       instances: 1,
       exec_mode: 'fork',
+      watch: true,
+      ignore_watch: ['node_modules', 'logs'],
       env: {
         NODE_ENV: 'production'
       }
@@ -27,6 +31,8 @@ module.exports = {
       args: 'run start',
       instances: 1,
       exec_mode: 'fork',
+      watch: true,
+      ignore_watch: ['node_modules', 'dist'],
       env: {
         NODE_ENV: 'production'
       }
