@@ -182,6 +182,30 @@ The system includes an automated threat detection engine that scans logs every 1
    node collector.js
    ```
 
+## Database Partitioning (Bucketing)
+
+We use ClickHouse partitioning to create independent "buckets" for your logs, enabling efficient management and deletion.
+
+**Strategy**: `PARTITION BY (vmId, app, toYYYYMM(timestamp))`
+
+This means every combination of **VM**, **Application**, and **Month** is stored separately on disk.
+
+### Benefits
+1.  **Isolation**: Deleting logs for one app doesn't affect others.
+2.  **Performance**: Dropping a partition is instant (filesystem operation).
+3.  **Automatic Config**: New buckets are created automatically when the agent sends a new `VM_ID` or `APP_NAME`.
+
+### Management Commands
+To delete logs for a specific bucket, run SQL against ClickHouse:
+
+**Delete all logs for App 'mookit' on 'vm-01' for Feb 2026:**
+```sql
+ALTER TABLE logs.logs DROP PARTITION ('vm-01', 'mookit', 202602)
+```
+
+**Delete everything for a specific VM and Month:**
+*Requires dropping each app partition for that VM, or using a script to iterate.*
+
 ## Production Ops (PM2, systemd, sysctl)
 
 We include production helpers under `ops/`.
@@ -243,7 +267,7 @@ You can run the entire stack (Backend, Frontend, ClickHouse) using Docker Compos
 
 1. ~~Total requests Spike -> Alert~~
 2. API keys ingest
-3. Database -> buckets and things
+3. ~~Database -> buckets and things~~
 4. ~~Avgs requests and std deviations~~
 5. ~~On the overview page, options to filter the VMs~~
 6. ~~LDAP login~~

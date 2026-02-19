@@ -65,8 +65,7 @@ const checkAndAlert = async () => {
                     FROM logs
                     WHERE ${timeFilter} AND (
                         url ILIKE '%UNION%SELECT%' OR 
-                        url ILIKE '%OR%1=1%' OR 
-                        url ILIKE '%--%' OR
+                        url ILIKE '% OR 1=1%' OR 
                         url ILIKE '%DROP%TABLE%'
                     )
                     GROUP BY ip
