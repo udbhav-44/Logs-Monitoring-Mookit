@@ -22,7 +22,26 @@ services:
     networks:
       - log_network
 
-  # 2. Backend API
+  # 1b. InfluxDB (v2) Database for Monitoring
+  influxdb:
+    image: influxdb:2
+    container_name: monitoring_db
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword123
+      - DOCKER_INFLUXDB_INIT_ORG=monitoring-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=monitoring
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - log_network
+    restart: always
+
+  # 2. Log Backend API
   backend:
     build: ./backend
     container_name: log_monitor_backend
@@ -35,14 +54,14 @@ services:
       - PORT=5002
       - CLICKHOUSE_HOST=http://clickhouse:8123
       - CLICKHOUSE_DB=logs
-      - ALERT_TO_EMAIL=${ALERT_TO_EMAIL} # Pass from host
-      - SMTP_USER=${SMTP_USER}           # Pass from host
-      - SMTP_PASS=${SMTP_PASS}           # Pass from host
+      - ALERT_TO_EMAIL=${ALERT_TO_EMAIL:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
     networks:
       - log_network
     restart: always
 
-  # 3. Frontend UI
+  # 3. Log Frontend UI
   frontend:
     build: ./frontend
     container_name: log_monitor_frontend
@@ -56,6 +75,7 @@ services:
 
 volumes:
   clickhouse_data:
+  influxdb_data:
 
 networks:
   log_network:

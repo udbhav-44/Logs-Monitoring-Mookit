@@ -618,6 +618,8 @@ const getSuspiciousActivity = async (req, res) => {
         const currentRpm = Number(current.currentRpm);
         const threshold = avgRpm + (2 * stdDevRpm);
 
+        const alerts = [];
+
         if (currentRpm > threshold && currentRpm > 10) {
             alerts.push({
                 type: 'traffic_spike',
@@ -629,8 +631,6 @@ const getSuspiciousActivity = async (req, res) => {
                 uids: [], vmIds: [], apps: [], sources: [], userAgent: 'N/A'
             });
         }
-
-        const alerts = [];
 
         // Process Brute Force
         bfRes.forEach(row => {
