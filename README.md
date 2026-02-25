@@ -14,9 +14,11 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
 
 ## Architecture
 
-- **Agent** (Node.js + Chokidar): watches log files/folders, filters, batches, and sends logs.
-- **Backend** (Node.js + Express + ClickHouse): parses, stores, creates alerts, and serves analytics/search APIs.
-- **Frontend** (React + Vite + Recharts): dashboard and log explorer.
+- **Agent (Logs)** (Node.js + Chokidar): watches log files/folders, filters, batches, and sends logs.
+- **Backend (Logs)** (Node.js + Express + ClickHouse): parses, stores, creates alerts, and serves analytics/search APIs.
+- **Agent (Metrics)** (Python + psutil): Tracks CPU, memory, disk usage, and process stats.
+- **Backend (Metrics)** (Node.js + InfluxDB): Websocket server for real-time telemetry and InfluxDB for time-series historic data.
+- **Frontend** (React + Vite + Tailwind): Unified remote dashboard and log explorer.
 
 ## Quick Start
 
@@ -24,24 +26,27 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
    ```bash
    chmod +x start-all.sh
    ```
-2. **Run the stack**
+2. **Run the Database Stack via Docker**
    ```bash
-   ./start-all.sh
+   docker compose up -d
    ```
-   This script:
-   - Installs dependencies (backend, frontend, agent)
-   - Starts backend API on `http://localhost:5002`
-   - Starts frontend on `http://localhost:5173`
-   - Starts the agent
-3. **Open the dashboard**
+   This starts the required `clickhouse` (Log Analytics) and `influxdb:2` (System Metrics) containers.
+
+3. **Run the Application Stack via PM2**
+   ```bash
+   pm2 start ecosystem.config.js
+   pm2 save
+   ```
+   This orchestrates:
+   - `log-backend` (Cluster mode) on `http://localhost:5002`
+   - `monitoring-backend` (Websocket/Telemetry) on `http://localhost:5000`
+   - `monitoring-agent` (Python collector)
+   - `log-frontend` (Vite) on `http://localhost:5173`
+
+4. **Open the dashboard**
    ```text
    http://localhost:5173
    ```
-
-Optional clean start (resets ClickHouse data):
-```bash
-RESET_DB=1 ./start-all.sh
-```
 
 ## Log Formats Accepted (Strict)
 
@@ -63,18 +68,13 @@ Where:
 ## Project Structure
 
 ```
-├── agent/              # Log Collector Agent
-│   ├── collector.js    # Main agent logic
-│   └── .env            # Agent configuration
-├── backend/            # Central API & Parsing Logic
-│   ├── server.js       # Entry point
-│   ├── controllers/    # API Controllers (Ingest, Analytics)
-│   ├── services/       # Alert Service, Parser
-│   └── config/         # ClickHouse config
-├── frontend/           # React Dashboard
-│   ├── src/pages/      # Dashboard Views (Overview, Explorer, etc.)
-│   └── src/components/ # Reusable UI components
-└── start-all.sh        # Helper script to launch everything
+├── agent/              # Log Collector Agent (Node)
+├── backend/            # Log Analytics API (Node + ClickHouse)
+├── monitoring-agent/   # System Metrics Collector (Python)
+├── monitoring-server/  # Telemetry WebSocket API (Node + InfluxDB)
+├── frontend/           # Unified React Dashboard 
+├── docker-compose.yml  # Database services (ClickHouse + InfluxDB)
+└── ecosystem.config.js # Global PM2 orchestrator
 ```
 
 ## Configuration
@@ -210,14 +210,15 @@ ALTER TABLE logs.logs DROP PARTITION ('vm-01', 'mookit', 202602)
 
 We include production helpers under `ops/`.
 
-### PM2 (multi-core backend)
+### PM2
+To run the entire unified suite in production, use the root ecosystem file:
 ```bash
 npm install -g pm2
-pm2 start ops/pm2/ecosystem.config.cjs
+pm2 start ecosystem.config.js
 pm2 save
 pm2 startup
 ```
-*Note: The security alert cron job is designed to run only on the first instance (`NODE_APP_INSTANCE=0`) to prevent duplicate emails.*
+*Note: `log-backend` is automatically configured to run in `cluster` mode to utilize all available CPU cores.*
 
 ### systemd (auto-restart on boot)
 ```bash
