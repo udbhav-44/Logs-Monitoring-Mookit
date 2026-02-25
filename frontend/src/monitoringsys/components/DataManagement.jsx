@@ -1,0 +1,201 @@
+import React, { useState, useEffect } from 'react';
+import { Database, Trash2, BarChart3, AlertCircle, RefreshCw } from 'lucide-react';
+import config from '../config';
+
+const DataManagement = ({ vmId, hostname }) => {
+    const [storageStats, setStorageStats] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const refreshInterval = 30; // Fixed 30 seconds
+
+    useEffect(() => {
+        fetchStorageStats();
+    }, []);
+
+    // Auto-refresh effect - refresh every 1 minute
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchStorageStats(true); // Background refresh
+        }, 60 * 1000); // 60 seconds = 1 minute
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchStorageStats = async (isBackgroundRefresh = false) => {
+        if (isBackgroundRefresh) {
+            setIsRefreshing(true);
+        }
+
+        try {
+            const response = await fetch(`${config.SERVER_URL}/api/storage-stats`);
+            const data = await response.json();
+            console.log('Storage stats received:', data); // Debug log
+            setStorageStats(data);
+        } catch (error) {
+            console.error('Error fetching storage stats:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const deleteOldData = async (period) => {
+        if (!confirm(`Are you sure you want to delete data older than ${period}? This action cannot be undone.`)) {
+            return;
+        }
+
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const response = await fetch(`${config.SERVER_URL}/api/metrics/${vmId}?period=${period}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                setMessage(`✓ ${result.message}`);
+                fetchStorageStats(); // Refresh stats
+            } else {
+                setMessage(`✗ Failed to delete data`);
+            }
+        } catch (error) {
+            setMessage(`✗ Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatBytes = (bytes) => {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const formatDate = (date) => {
+        return new Date(date).toLocaleString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    };
+
+    const currentVmStats = storageStats?.vmStats?.find(vm => vm._id === vmId);
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6 mt-4">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h3 className="flex items-center gap-2 m-0 text-lg font-bold text-gray-900">
+                    <Database size={20} className="text-indigo-600" />
+                    Data Management - {hostname}
+                </h3>
+
+                {/* Refresh indicator */}
+                {isRefreshing && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                        <RefreshCw size={14} className="text-green-600 animate-spin" />
+                        Updating...
+                    </div>
+                )}
+            </div>
+
+            {storageStats && (
+                <div className="mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        {/* Total Records Card */}
+                        <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                            <div className="text-sm text-indigo-700 font-semibold mb-2">Total Records</div>
+                            <div className="text-3xl font-bold text-indigo-900">
+                                {storageStats.totalRecords ? storageStats.totalRecords.toLocaleString() : '0'}
+                            </div>
+                        </div>
+
+                        {/* VM-specific stats */}
+                        {currentVmStats && (
+                            <>
+                                <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                                    <div className="text-sm text-purple-700 font-semibold mb-2">VM Records</div>
+                                    <div className="text-3xl font-bold text-purple-900">
+                                        {currentVmStats.totalRecords ? currentVmStats.totalRecords.toLocaleString() : '0'}
+                                    </div>
+                                </div>
+
+                                {currentVmStats.oldestRecord && currentVmStats.newestRecord && (
+                                    <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                                        <div className="text-sm text-green-700 font-semibold mb-2">Data Range</div>
+                                        <div className="text-sm font-medium text-green-900">
+                                            {formatDate(currentVmStats.oldestRecord)} <br />
+                                            to <br />
+                                            {formatDate(currentVmStats.newestRecord)}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="mb-6">
+                <h4 className="flex items-center gap-2 text-lg font-bold text-gray-800 mb-4">
+                    <Trash2 size={18} className="text-red-500" />
+                    Delete Old Data
+                </h4>
+
+                <div className="flex gap-3 flex-wrap">
+                    <button
+                        onClick={() => deleteOldData('1d')}
+                        disabled={loading}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Delete &gt; 1 Day
+                    </button>
+                    <button
+                        onClick={() => deleteOldData('7d')}
+                        disabled={loading}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Delete &gt; 1 Week
+                    </button>
+                    <button
+                        onClick={() => deleteOldData('30d')}
+                        disabled={loading}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Delete &gt; 1 Month
+                    </button>
+                </div>
+            </div>
+
+            {message && (
+                <div className={`p-3 rounded-lg text-sm font-medium mb-4 ${message.startsWith('✓')
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                    {message}
+                </div>
+            )}
+
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2 text-orange-800">
+                    <AlertCircle size={18} />
+                    <strong className="font-bold">Data Storage Info</strong>
+                </div>
+                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1 ml-1">
+                    <li>Metrics are collected every 5 seconds by default</li>
+                    <li>Data is automatically expired after 30 days (configurable)</li>
+                    <li>Use the delete options above to manage storage manually</li>
+                    <li>Historical data is used for trend analysis and reporting</li>
+                </ul>
+            </div>
+        </div>
+    );
+};
+
+export default DataManagement;

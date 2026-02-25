@@ -6,7 +6,8 @@ import {
     Activity,
     Shield,
     AppWindow,
-    LogOut
+    LogOut,
+    Server
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -24,6 +25,7 @@ const Layout = ({ children }) => {
         { path: '/activity', icon: Activity, label: 'User Activity' },
         { path: '/applications', icon: AppWindow, label: 'Applications' },
         { path: '/security', icon: Shield, label: 'Security' },
+        { path: '/metrics', icon: Server, label: 'System Metrics' },
     ];
 
     return (

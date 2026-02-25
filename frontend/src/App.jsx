@@ -6,6 +6,10 @@ import LogExplorer from './pages/LogExplorer';
 import UserActivity from './pages/UserActivity';
 import Security from './pages/Security';
 import Applications from './pages/Applications';
+import MonitoringDashboard from './monitoringsys/pages/Dashboard';
+import VMDetails from './monitoringsys/pages/VMDetails';
+import AlertRulesConfig from './monitoringsys/components/AlertRulesConfig';
+import MonitoringNavbar from './monitoringsys/components/Navbar';
 
 // Placeholder components until fully implemented
 const Placeholder = ({ title }) => (
@@ -36,6 +40,9 @@ function App() {
                   <Route path="/activity" element={<UserActivity />} />
                   <Route path="/security" element={<Security />} />
                   <Route path="/applications" element={<Applications />} />
+                  <Route path="/metrics" element={<><MonitoringNavbar /><MonitoringDashboard /></>} />
+                  <Route path="/metrics/vm/:id" element={<><MonitoringNavbar /><VMDetails /></>} />
+                  <Route path="/metrics/alert-rules" element={<><MonitoringNavbar /><AlertRulesConfig /></>} />
                 </Routes>
               </Layout>
             </PrivateRoute>
