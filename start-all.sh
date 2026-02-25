@@ -13,6 +13,12 @@ cleanup() {
   if [[ -n "${AGENT_PID:-}" ]]; then
     kill "$AGENT_PID" >/dev/null 2>&1 || true
   fi
+  if [[ -n "${MON_SERVER_PID:-}" ]]; then
+    kill "$MON_SERVER_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${MON_AGENT_PID:-}" ]]; then
+    kill "$MON_AGENT_PID" >/dev/null 2>&1 || true
+  fi
 }
 
 trap cleanup EXIT
@@ -21,6 +27,9 @@ trap cleanup EXIT
 pkill -f "node server.js" || true
 pkill -f "vite" || true
 pkill -f "node collector.js" || true
+pkill -f "node index.js" || true
+pkill -f "python agent.py" || true
+pkill -f "python3 agent.py" || true
 
 # Start Backend
 echo "Starting Backend..."
@@ -57,9 +66,41 @@ RESET_OFFSETS="${RESET_OFFSETS:-0}" node collector.js > "$ROOT_DIR/agent.log" 2>
 AGENT_PID=$!
 cd "$ROOT_DIR"
 
+# Start Monitoring System Backend
+echo "Starting Monitoring System Backend..."
+cd "$ROOT_DIR/monitoring-server"
+npm install
+export DATABASE_TYPE=influxdb
+export INFLUXDB_HOST=http://localhost:8086
+export INFLUXDB_TOKEN=my-super-secret-auth-token
+export INFLUXDB_ORG=monitoring-org
+export INFLUXDB_BUCKET=monitoring
+export PORT=5000
+npm start > "$ROOT_DIR/monitoring-backend.log" 2>&1 &
+MON_SERVER_PID=$!
+cd "$ROOT_DIR"
+
+# Start Monitoring System Agent
+echo "Starting Monitoring System Agent..."
+cd "$ROOT_DIR/monitoring-agent"
+if [ ! -d "venv" ]; then
+    python3 -m venv venv || true
+fi
+if [ -f "venv/bin/activate" ]; then
+    source venv/bin/activate
+    pip install -r requirements.txt || true
+    python3 agent.py > "$ROOT_DIR/monitoring-agent.log" 2>&1 &
+else
+    # Fallback if venv creation fails
+    python3 agent.py > "$ROOT_DIR/monitoring-agent.log" 2>&1 &
+fi
+MON_AGENT_PID=$!
+cd "$ROOT_DIR"
+
 echo "All services started!"
 echo "Backend: http://localhost:5002"
+echo "Monitoring System Backend: http://localhost:5000"
 echo "Frontend: http://localhost:5173"
-echo "Check backend.log, frontend.log, and agent.log for details."
+echo "Check backend.log, frontend.log, agent.log, monitoring-backend.log, and monitoring-agent.log for details."
 
 wait
