@@ -328,9 +328,13 @@ const getApplicationOverview = async (req, res) => {
 // @desc    Search Logs
 const searchLogs = async (req, res) => {
     try {
-        const { limit = 50, page = 1, search } = req.query;
+        const { limit = 50, page = 1, search, sortBy = 'timestamp', sortOrder = 'desc' } = req.query;
         const offset = (Number(page) - 1) * Number(limit);
         const limitVal = Number(limit);
+
+        const allowedSortColumns = ['timestamp', 'status', 'method', 'course', 'ip', 'uid', 'app', 'vmId'];
+        const validSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'timestamp';
+        const validSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
         const client = getClient();
         const timeRange = getTimeRangeSQL(req.query);
@@ -369,7 +373,7 @@ const searchLogs = async (req, res) => {
                 responseSize
             FROM logs
             WHERE ${whereClause}
-            ORDER BY timestamp DESC
+            ORDER BY ${validSortBy} ${validSortOrder}
             LIMIT ${limitVal}
             OFFSET ${offset}
         `;

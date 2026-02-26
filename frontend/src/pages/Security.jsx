@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, AlertOctagon, Activity, ExternalLink } from 'lucide-react';
+import { ShieldAlert, AlertOctagon, Activity, ExternalLink, CheckCircle, RotateCcw } from 'lucide-react';
 import { fetchSuspicious } from '../lib/api';
 
 const severityBadge = (severity = 'medium') => {
@@ -10,6 +10,17 @@ const severityBadge = (severity = 'medium') => {
     low: 'bg-yellow-50 text-yellow-700'
   };
   return styles[severity] || styles.medium;
+};
+
+const LABEL_MAP = {
+  high_error_rate: 'High Error Rate',
+  brute_force: 'Brute Force Attack',
+  sql_injection: 'SQL Injection',
+  xss: 'Cross-site Scripting (XSS)',
+  path_traversal: 'Path Traversal',
+  sensitive_file_access: 'Sensitive File Access',
+  unauthorized_access: 'Unauthorized Access',
+  traffic_spike: 'Traffic Spike',
 };
 
 const RANGE_STORAGE_KEY = 'logs.monitoring.security.range';
@@ -31,9 +42,29 @@ const Security = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [range, setRange] = useState(() => getStoredRange('24h'));
+  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem('logs.monitoring.security.acknowledged');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const navigate = useNavigate();
   const severityRank = { high: 0, medium: 1, low: 2 };
   const rangeLabel = rangeOptions.find((option) => option.value === range)?.label || 'Last 24h';
+
+  const toggleAcknowledge = (id, currentStatus) => {
+    const updated = { ...acknowledgedAlerts };
+    if (currentStatus) {
+      delete updated[id];
+    } else {
+      updated[id] = Date.now();
+    }
+    setAcknowledgedAlerts(updated);
+    window.localStorage.setItem('logs.monitoring.security.acknowledged', JSON.stringify(updated));
+  };
 
   const load = async (selectedRange = range) => {
     setLoading(true);
@@ -100,56 +131,69 @@ const Security = () => {
       {loading && <p className="text-gray-500">Scanning logs for anomalies...</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {alerts.map((alert, idx) => (
-          <div key={`${alert.type}-${alert.actor || idx}`} className="bg-white p-5 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-3">
-              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${severityBadge(alert.severity)}`}>
-                {alert.severity || 'medium'}
-              </span>
-              <span className="text-xs text-gray-500">{alert.type.replace(/_/g, ' ')}</span>
-            </div>
-            <div className="font-mono text-sm text-gray-800 mb-2">{alert.actor || 'unknown'}</div>
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-3xl font-bold text-gray-900">{alert.count}</div>
-              <div className="text-gray-500 text-sm flex items-center gap-1">
-                <Activity size={16} /> events
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">{alert.description}</p>
-            {alert.apps && alert.apps.length > 0 && (
-              <p className="text-xs text-gray-600 mt-2 font-medium">
-                Apps: <span className="text-indigo-600">{alert.apps.join(', ')}</span>
-              </p>
-            )}
-            {alert.sources && alert.sources.length > 0 && (
-              <p className="text-xs text-gray-600 mt-1 font-medium">
-                Source: <span className="text-indigo-600">{alert.sources.join(', ')}</span>
-              </p>
-            )}
-            {alert.vmIds && alert.vmIds.length > 0 && (
-              <p className="text-xs text-gray-600 mt-1 font-medium">
-                VMs: <span className="text-indigo-600">{alert.vmIds.join(', ')}</span>
-              </p>
-            )}
-            {alert.uids && alert.uids.length > 0 && (
-              <p className="text-xs text-indigo-600 mt-2 font-medium">
-                Users: {alert.uids.join(', ')}
-              </p>
-            )}
-            <p className="text-xs text-gray-400 mt-1 truncate" title={alert.userAgent}>
-              UA: {alert.userAgent || 'Unknown'}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">Last seen: {alert.lastSeen ? new Date(alert.lastSeen).toLocaleString() : '—'}</p>
-            {alert.actor && (
+        {alerts.map((alert, idx) => {
+          const alertId = `${alert.type}-${alert.actor || 'unknown'}-${alert.lastSeen}`;
+          const isAck = !!acknowledgedAlerts[alertId];
+
+          return (
+            <div key={alertId} className={`bg-white p-5 rounded-xl shadow-sm border relative transition-all ${isAck ? 'border-gray-200 opacity-60 grayscale-[50%]' : 'border-red-100 hover:shadow-md'}`}>
               <button
-                onClick={() => navigate(`/logs?ip=${encodeURIComponent(alert.actor)}&range=${range}`)}
-                className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-sm font-semibold hover:text-indigo-800"
+                onClick={() => toggleAcknowledge(alertId, isAck)}
+                className={`absolute top-4 right-4 p-1 rounded-full transition-colors ${isAck ? 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' : 'text-gray-300 hover:text-green-600 hover:bg-green-50'}`}
+                title={isAck ? "Undo Acknowledgment" : "Acknowledge Alert"}
               >
-                View related logs <ExternalLink size={14} />
+                {isAck ? <RotateCcw size={18} /> : <CheckCircle size={18} />}
               </button>
-            )}
-          </div>
-        ))}
+
+              <div className="flex items-center justify-between mb-3 pr-8">
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${severityBadge(alert.severity)}`}>
+                  {alert.severity || 'medium'}
+                </span>
+                <span className="text-xs text-gray-500">{LABEL_MAP[alert.type] || alert.type.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="font-mono text-sm text-gray-800 mb-2">{alert.actor || 'unknown'}</div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-3xl font-bold text-gray-900">{alert.count}</div>
+                <div className="text-gray-500 text-sm flex items-center gap-1">
+                  <Activity size={16} /> events
+                </div>
+              </div>
+              <p className="text-sm text-gray-600">{alert.description}</p>
+              {alert.apps && alert.apps.length > 0 && (
+                <p className="text-xs text-gray-600 mt-2 font-medium">
+                  Apps: <span className="text-indigo-600">{alert.apps.join(', ')}</span>
+                </p>
+              )}
+              {alert.sources && alert.sources.length > 0 && (
+                <p className="text-xs text-gray-600 mt-1 font-medium">
+                  Source: <span className="text-indigo-600">{alert.sources.join(', ')}</span>
+                </p>
+              )}
+              {alert.vmIds && alert.vmIds.length > 0 && (
+                <p className="text-xs text-gray-600 mt-1 font-medium">
+                  VMs: <span className="text-indigo-600">{alert.vmIds.join(', ')}</span>
+                </p>
+              )}
+              {alert.uids && alert.uids.length > 0 && (
+                <p className="text-xs text-indigo-600 mt-2 font-medium">
+                  Users: {alert.uids.join(', ')}
+                </p>
+              )}
+              <p className="text-xs text-gray-400 mt-1 truncate" title={alert.userAgent}>
+                UA: {alert.userAgent || 'Unknown'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Last seen: {alert.lastSeen ? new Date(alert.lastSeen).toLocaleString() : '—'}</p>
+              {alert.actor && (
+                <button
+                  onClick={() => navigate(`/logs?ip=${encodeURIComponent(alert.actor)}&range=${range}`)}
+                  className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-sm font-semibold hover:text-indigo-800"
+                >
+                  View related logs <ExternalLink size={14} />
+                </button>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {alerts.length === 0 && !loading && (

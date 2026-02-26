@@ -9,7 +9,6 @@ import Applications from './pages/Applications';
 import MonitoringDashboard from './monitoringsys/pages/Dashboard';
 import VMDetails from './monitoringsys/pages/VMDetails';
 import AlertRulesConfig from './monitoringsys/components/AlertRulesConfig';
-import MonitoringNavbar from './monitoringsys/components/Navbar';
 
 // Placeholder components until fully implemented
 const Placeholder = ({ title }) => (
@@ -23,33 +22,37 @@ const Placeholder = ({ title }) => (
 
 import Login from './pages/Login';
 import PrivateRoute from './components/PrivateRoute';
+import { Toaster } from './components/Toast';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/*"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/logs" element={<LogExplorer />} />
-                  <Route path="/activity" element={<UserActivity />} />
-                  <Route path="/security" element={<Security />} />
-                  <Route path="/applications" element={<Applications />} />
-                  <Route path="/metrics" element={<><MonitoringNavbar /><MonitoringDashboard /></>} />
-                  <Route path="/metrics/vm/:id" element={<><MonitoringNavbar /><VMDetails /></>} />
-                  <Route path="/metrics/alert-rules" element={<><MonitoringNavbar /><AlertRulesConfig /></>} />
-                </Routes>
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <Toaster />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/*"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/logs" element={<LogExplorer />} />
+                    <Route path="/activity" element={<UserActivity />} />
+                    <Route path="/security" element={<Security />} />
+                    <Route path="/applications" element={<Applications />} />
+                    <Route path="/metrics" element={<MonitoringDashboard />} />
+                    <Route path="/metrics/vm/:id" element={<VMDetails />} />
+                    <Route path="/metrics/alert-rules" element={<AlertRulesConfig />} />
+                  </Routes>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

@@ -6,6 +6,39 @@ import LogDetailModal from '../components/LogDetailModal';
 
 const PAGE_SIZE = 25;
 
+const HighlightText = ({ text, highlight }) => {
+  if (!highlight?.trim() || !text) return <>{text}</>;
+  const parts = String(text).split(new RegExp(`(${highlight})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+};
+
+const SortableHeader = ({ label, field, currentSortBy, currentSortOrder, onSort, children }) => {
+  const isSorted = currentSortBy === field;
+  return (
+    <th className="px-4 py-3 cursor-pointer hover:bg-gray-200 transition-colors select-none" onClick={() => onSort(field)}>
+      <div className="flex items-center gap-1">
+        {label}
+        {children}
+        {isSorted && (
+          <span className="text-gray-400 text-xs ml-1">
+            {currentSortOrder === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+      </div>
+    </th>
+  )
+}
+
 const LogExplorer = () => {
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
@@ -25,7 +58,9 @@ const LogExplorer = () => {
     app: '',
     vmId: '',
     search: '',
-    range: 'all'
+    range: 'all',
+    sortBy: 'timestamp',
+    sortOrder: 'desc'
   });
 
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
@@ -96,6 +131,18 @@ const LogExplorer = () => {
     fetchLogs(1, updated);
   };
 
+  const handleSort = (field) => {
+    setFilters(prev => {
+      const isDesc = prev.sortBy === field ? prev.sortOrder === 'desc' : false;
+      const newOrder = prev.sortBy === field && isDesc ? 'asc' : 'desc';
+      const updated = { ...prev, sortBy: field, sortOrder: newOrder };
+      setSearchParams({ ...Object.fromEntries(Object.entries(updated).filter(([_, v]) => v)), page: 1 });
+      setPage(1);
+      setTimeout(() => fetchLogs(1, updated), 0);
+      return updated;
+    });
+  };
+
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
   return (
@@ -130,8 +177,21 @@ const LogExplorer = () => {
           <input name="ip" placeholder="IP Address" className="px-4 py-2 border rounded-lg" value={filters.ip} onChange={handleFilterChange} />
           <input name="uid" placeholder="User ID" className="px-4 py-2 border rounded-lg" value={filters.uid} onChange={handleFilterChange} />
           <input name="course" placeholder="Course Code" className="px-4 py-2 border rounded-lg" value={filters.course} onChange={handleFilterChange} />
-          <input name="status" placeholder="Status (e.g. 200)" className="px-4 py-2 border rounded-lg" value={filters.status} onChange={handleFilterChange} />
-          <select name="sourceType" value={filters.sourceType} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg">
+
+          <select name="status" value={filters.status} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg text-gray-700">
+            <option value="">Status (All)</option>
+            <option value="200">200 OK</option>
+            <option value="201">201 Created</option>
+            <option value="400">400 Bad Request</option>
+            <option value="401">401 Unauthorized</option>
+            <option value="403">403 Forbidden</option>
+            <option value="404">404 Not Found</option>
+            <option value="500">500 Internal Error</option>
+            <option value="502">502 Bad Gateway</option>
+            <option value="503">503 Service Unavailable</option>
+          </select>
+
+          <select name="sourceType" value={filters.sourceType} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg text-gray-700">
             <option value="">Source</option>
             <option value="nginx">nginx</option>
             <option value="app">app</option>
@@ -145,8 +205,17 @@ const LogExplorer = () => {
           </select>
           <input name="app" placeholder="App Name" className="px-4 py-2 border rounded-lg" value={filters.app} onChange={handleFilterChange} />
           <input name="vmId" placeholder="VM ID" className="px-4 py-2 border rounded-lg" value={filters.vmId} onChange={handleFilterChange} />
-          <input name="start" type="datetime-local" className="px-4 py-2 border rounded-lg" value={filters.start} onChange={handleFilterChange} />
-          <input name="end" type="datetime-local" className="px-4 py-2 border rounded-lg" value={filters.end} onChange={handleFilterChange} />
+
+          <div className="relative">
+            <span className="absolute -top-2 left-2 bg-white px-1 text-[10px] font-semibold text-gray-400">Start (Local Time)</span>
+            <input name="start" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-700" value={filters.start} onChange={handleFilterChange} />
+          </div>
+
+          <div className="relative">
+            <span className="absolute -top-2 left-2 bg-white px-1 text-[10px] font-semibold text-gray-400">End (Local Time)</span>
+            <input name="end" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-700" value={filters.end} onChange={handleFilterChange} />
+          </div>
+
           <input name="search" placeholder="Full-text search" className="px-4 py-2 border rounded-lg md:col-span-2" value={filters.search} onChange={handleFilterChange} />
           <div className="md:col-span-2 lg:col-span-2 flex gap-3">
             <button type="submit" className="flex-1 bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
@@ -196,15 +265,17 @@ const LogExplorer = () => {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600 font-medium">
               <tr>
-                <th className="px-4 py-3">Timestamp</th>
+                <SortableHeader label="Timestamp" field="timestamp" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort}>
+                  <span className="text-xs text-gray-400 font-normal">(Local)</span>
+                </SortableHeader>
                 <th className="px-4 py-3">Source</th>
-                <th className="px-4 py-3">App / VM</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Method</th>
+                <SortableHeader label="App / VM" field="app" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort} />
+                <SortableHeader label="Status" field="status" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort} />
+                <SortableHeader label="Method" field="method" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort} />
                 <th className="px-4 py-3">URL / Message</th>
-                <th className="px-4 py-3">Course</th>
-                <th className="px-4 py-3">IP</th>
-                <th className="px-4 py-3">UID</th>
+                <SortableHeader label="Course" field="course" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort} />
+                <SortableHeader label="IP" field="ip" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort} />
+                <SortableHeader label="UID" field="uid" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort} />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -232,27 +303,29 @@ const LogExplorer = () => {
                       {log.parsedData?.status || 'N/A'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-gray-600">{log.parsedData?.method || '-'}</td>
+                  <td className="px-4 py-3 font-mono text-gray-600">
+                    <HighlightText text={log.parsedData?.method || '-'} highlight={filters.search} />
+                  </td>
                   <td className="px-4 py-3 max-w-xs truncate" title={log.parsedData?.url || log.parsedData?.message}>
-                    {log.parsedData?.url || log.parsedData?.message || log.rawMessage}
+                    <HighlightText text={log.parsedData?.url || log.parsedData?.message || log.rawMessage} highlight={filters.search} />
                   </td>
                   <td
                     className="px-4 py-3 text-gray-500 underline-offset-2"
                     onClick={(e) => { e.stopPropagation(); quickFilter('course', log.parsedData?.course); }}
                   >
-                    {log.parsedData?.course || '-'}
+                    <HighlightText text={log.parsedData?.course || '-'} highlight={filters.search} />
                   </td>
                   <td
                     className="px-4 py-3 text-gray-500 underline-offset-2"
                     onClick={(e) => { e.stopPropagation(); quickFilter('ip', log.parsedData?.ip); }}
                   >
-                    {log.parsedData?.ip || '-'}
+                    <HighlightText text={log.parsedData?.ip || '-'} highlight={filters.search} />
                   </td>
                   <td
                     className="px-4 py-3 text-gray-500 underline-offset-2"
                     onClick={(e) => { e.stopPropagation(); quickFilter('uid', log.parsedData?.uid); }}
                   >
-                    {log.parsedData?.uid || '-'}
+                    <HighlightText text={log.parsedData?.uid || '-'} highlight={filters.search} />
                   </td>
                 </tr>
               ))}
@@ -294,7 +367,20 @@ const LogExplorer = () => {
       </div>
 
       {selectedLog && (
-        <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
+        <LogDetailModal
+          log={selectedLog}
+          onClose={() => setSelectedLog(null)}
+          onPrev={
+            logs.indexOf(selectedLog) > 0
+              ? () => setSelectedLog(logs[logs.indexOf(selectedLog) - 1])
+              : null
+          }
+          onNext={
+            logs.indexOf(selectedLog) !== -1 && logs.indexOf(selectedLog) < logs.length - 1
+              ? () => setSelectedLog(logs[logs.indexOf(selectedLog) + 1])
+              : null
+          }
+        />
       )}
     </div>
   );
