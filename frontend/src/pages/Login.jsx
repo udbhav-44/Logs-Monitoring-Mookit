@@ -1,13 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, User, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Activity, User, Lock, ArrowRight, Loader2, Zap, AlertTriangle, Server, Eye, EyeOff } from 'lucide-react';
+import anime from 'animejs';
+
+const LOG_LINES = [
+    { cls: 'text-green-400', text: '[INFO]  2026-02-26 09:14:02  nginx: 200 GET /api/health' },
+    { cls: 'text-yellow-400', text: '[WARN]  2026-02-26 09:14:05  memory usage at 78%' },
+    { cls: 'text-green-400', text: '[INFO]  2026-02-26 09:14:09  worker-3: processed 512 events' },
+    { cls: 'text-red-400', text: '[ERROR] 2026-02-26 09:14:11  db: connection timeout (retry 1/3)' },
+    { cls: 'text-green-400', text: '[INFO]  2026-02-26 09:14:15  db: reconnected successfully' },
+];
+
+const FEATURES = [
+    { Icon: Zap, label: 'Real-time log streaming' },
+    { Icon: AlertTriangle, label: 'Anomaly detection' },
+    { Icon: Server, label: 'System metrics' },
+];
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const cardRef = useRef(null);
+
+    useEffect(() => {
+        // Subtle scale spring on top of CSS slide-in
+        anime({
+            targets: cardRef.current,
+            scale: [0.97, 1],
+            duration: 600,
+            easing: 'easeOutQuart',
+        });
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,37 +50,132 @@ const Login = () => {
             });
 
             const data = await res.json();
-
             if (!res.ok) throw new Error(data.message || 'Login failed');
 
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data));
-            navigate('/');
+
+            anime({
+                targets: cardRef.current,
+                opacity: [1, 0],
+                translateX: [0, 40],
+                duration: 350,
+                easing: 'easeInQuart',
+                complete: () => navigate('/'),
+            });
         } catch (err) {
             setError(err.message);
+            anime({
+                targets: cardRef.current,
+                translateX: [0, -10, 10, -8, 8, -4, 4, 0],
+                duration: 500,
+                easing: 'easeInOutQuad',
+            });
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
-                <div className="text-center">
-                    <div className="mx-auto h-16 w-16 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
-                        <Activity className="h-8 w-8 text-indigo-600" />
+        <div className="flex h-screen overflow-hidden">
+            {/* ── LEFT PANEL ── */}
+            <div className="hidden md:flex w-[55%] flex-col bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-700 relative overflow-hidden">
+                {/* Dot-grid texture */}
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)',
+                        backgroundSize: '28px 28px',
+                    }}
+                />
+
+                {/* Floating orbs for depth */}
+                <div className="orb-1 absolute -top-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="orb-2 absolute -bottom-20 -right-10 w-72 h-72 bg-indigo-400/20 rounded-full blur-3xl pointer-events-none" />
+
+                {/* Logo + wordmark */}
+                <div className="relative z-10 p-10">
+                    <div className="flex items-center gap-3">
+                        <div className="h-11 w-11 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center shadow-lg">
+                            <Activity className="h-6 w-6 text-white" />
+                        </div>
+                        <span className="text-white font-bold text-xl tracking-tight">OOA Log Monitor</span>
                     </div>
-                    <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                        Welcome Back
-                    </h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Sign in to access the <span className="font-semibold text-indigo-600">OOA Log Monitor</span>
-                    </p>
                 </div>
 
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="space-y-4">
+                {/* Feature bullets — vertically centered */}
+                <div className="relative z-10 flex-1 flex flex-col justify-center px-14">
+                    <h1 className="text-4xl font-extrabold text-white leading-tight mb-4">
+                        Infrastructure<br />observability,<br />simplified.
+                    </h1>
+                    <p className="text-white/70 text-base mb-10 max-w-sm">
+                        Monitor logs, detect anomalies, and track system health — all in one place.
+                    </p>
+
+                    <ul className="space-y-5">
+                        {FEATURES.map(({ Icon, label }, i) => (
+                            <li
+                                key={label}
+                                className="flex items-center gap-4 feature-bullet"
+                                style={{ animationDelay: `${(i + 1) * 120}ms` }}
+                            >
+                                <div className="h-9 w-9 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                                    <Icon className="h-4 w-4 text-white" />
+                                </div>
+                                <span className="text-white/90 font-medium">{label}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* Terminal widget */}
+                <div className="relative z-10 mx-10 mb-10 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4 font-mono text-xs">
+                    <div className="flex items-center gap-1.5 mb-3">
+                        <div className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
+                        <div className="h-2.5 w-2.5 rounded-full bg-yellow-400/80" />
+                        <div className="h-2.5 w-2.5 rounded-full bg-green-400/80" />
+                        <span className="ml-2 text-white/40 text-[10px]">system.log</span>
+                    </div>
+                    <div className="space-y-1.5">
+                        {LOG_LINES.map((line, i) => (
+                            <div
+                                key={i}
+                                className={`${line.cls} log-line-${i + 1} truncate`}
+                            >
+                                {line.text}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── RIGHT PANEL ── */}
+            <div
+                ref={cardRef}
+                className="login-card-enter flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-16 relative"
+            >
+                {/* Mobile-only compact logo */}
+                <div className="md:hidden flex items-center gap-2 mb-8">
+                    <div className="h-9 w-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center">
+                        <Activity className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="font-bold text-gray-800 text-lg">OOA Log Monitor</span>
+                </div>
+
+                <div className="w-full max-w-sm">
+                    <div className="mb-8">
+                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                            Welcome back
+                        </h2>
+                        <p className="mt-2 text-sm text-gray-500">
+                            Sign in to your{' '}
+                            <span className="font-semibold text-indigo-600">OOA</span> account
+                        </p>
+                    </div>
+
+                    <form className="space-y-4" onSubmit={handleSubmit}>
                         <div className="relative group">
+                            <label htmlFor="username" className="sr-only">Username</label>
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <User className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
                             </div>
@@ -62,7 +184,8 @@ const Login = () => {
                                 name="username"
                                 type="text"
                                 required
-                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all bg-gray-50 focus:bg-white"
+                                autoComplete="username"
+                                className="block w-full pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-400 transition-all outline-none"
                                 placeholder="IITK User ID"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
@@ -70,47 +193,57 @@ const Login = () => {
                         </div>
 
                         <div className="relative group">
+                            <label htmlFor="password" className="sr-only">Password</label>
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
                             </div>
                             <input
                                 id="password"
                                 name="password"
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 required
-                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all bg-gray-50 focus:bg-white"
+                                autoComplete="current-password"
+                                className="block w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-400 transition-all outline-none"
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-indigo-500 focus:outline-none"
+                            >
+                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
                         </div>
-                    </div>
 
-                    {error && (
-                        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md animate-fade-in">
-                            <div className="flex">
-                                <div className="ml-3">
-                                    <p className="text-sm text-red-700 font-medium">{error}</p>
-                                </div>
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 p-3 rounded-xl">
+                                <p className="text-sm text-red-600 font-medium">{error}</p>
                             </div>
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                        {loading ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                            <>
-                                Sign in
-                                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                            </>
                         )}
-                    </button>
-                </form>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="group relative w-full flex justify-center items-center py-3 px-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 mt-2"
+                        >
+                            {loading ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <>
+                                    Sign in
+                                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Footer */}
+                <p className="absolute bottom-6 text-xs text-gray-400 select-none">
+                    OOA Infrastructure · IITK
+                </p>
             </div>
         </div>
     );

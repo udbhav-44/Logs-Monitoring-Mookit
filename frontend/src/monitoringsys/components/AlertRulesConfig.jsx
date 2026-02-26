@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import config from '../config';
+import { toast } from '../../components/Toast';
 
 const AlertRulesConfig = () => {
   const [rules, setRules] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     fetchRules();
@@ -19,7 +19,7 @@ const AlertRulesConfig = () => {
       setRules(data);
     } catch (error) {
       console.error('Error fetching alert rules:', error);
-      setMessage('Error loading alert rules');
+      toast.error('Error loading alert rules');
     } finally {
       setLoading(false);
     }
@@ -35,14 +35,13 @@ const AlertRulesConfig = () => {
       });
 
       if (response.ok) {
-        setMessage('Success: Alert rules saved successfully');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success('Alert rules saved successfully');
       } else {
-        setMessage('Error: Failed to save alert rules');
+        toast.error('Failed to save alert rules');
       }
     } catch (error) {
       console.error('Error saving alert rules:', error);
-      setMessage('Error: Failed to save alert rules');
+      toast.error('Failed to save alert rules');
     } finally {
       setSaving(false);
     }
@@ -118,12 +117,6 @@ const AlertRulesConfig = () => {
           {saving ? 'Saving...' : 'Save Rules'}
         </button>
       </div>
-
-      {message && (
-        <div className={`p-4 rounded-lg mb-6 font-medium text-sm ${message.startsWith('Success') || message.includes('saved') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-          {message}
-        </div>
-      )}
 
       <div className="bg-indigo-50 border-l-4 border-indigo-600 p-4 mb-6 rounded-r-lg">
         <p className="m-0 text-gray-700 leading-relaxed text-sm">Configure thresholds and durations for alerting. Duration specifies how long a threshold must be exceeded before triggering an alert.</p>

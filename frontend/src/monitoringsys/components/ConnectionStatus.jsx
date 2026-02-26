@@ -3,7 +3,7 @@ import { Wifi, WifiOff, Server, Activity } from 'lucide-react';
 import config from '../config';
 
 const ConnectionStatus = ({ agentUrl, vmId, agentStatus }) => {
-    const [serverStatus, setServerStatus] = useState('disconnected');
+    const [serverStatus, setServerStatus] = useState('checking');
 
     useEffect(() => {
         // Check server connection
@@ -37,12 +37,12 @@ const ConnectionStatus = ({ agentUrl, vmId, agentStatus }) => {
             <div className="w-px h-5 bg-gray-200" />
 
             <div className="flex items-center gap-2">
-                <Server size={14} className={serverStatus === 'connected' ? 'text-green-500' : 'text-red-500'} />
+                <Server size={14} className={serverStatus === 'connected' ? 'text-green-500' : serverStatus === 'checking' ? 'text-gray-400' : 'text-red-500'} />
                 <span className="text-xs font-medium text-gray-500">
                     Storage:
                 </span>
-                <span className={`text-xs font-bold tracking-wide ${serverStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
-                    {serverStatus === 'connected' ? 'ONLINE' : 'OFFLINE'}
+                <span className={`text-xs font-bold tracking-wide ${serverStatus === 'connected' ? 'text-green-600' : serverStatus === 'checking' ? 'text-gray-500' : 'text-red-600'}`}>
+                    {serverStatus === 'connected' ? 'ONLINE' : serverStatus === 'checking' ? 'CHECKING' : 'OFFLINE'}
                 </span>
             </div>
         </div>

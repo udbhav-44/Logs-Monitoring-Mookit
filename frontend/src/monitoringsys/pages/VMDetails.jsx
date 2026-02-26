@@ -13,6 +13,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { Line } from 'react-chartjs-2';
 import io from 'socket.io-client';
 import DataManagement from '../components/DataManagement';
@@ -28,7 +29,8 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    Filler
+    Filler,
+    zoomPlugin
 );
 
 const VMDetails = () => {
@@ -102,7 +104,15 @@ const VMDetails = () => {
             setConnectionStatus('error');
         });
 
+        const connectionTimeout = setTimeout(() => {
+            if (socket.connected) return;
+            console.error('Connection timeout');
+            setConnectionStatus('error');
+            socket.disconnect();
+        }, 8000);
+
         return () => {
+            clearTimeout(connectionTimeout);
             socket.disconnect();
         };
     }, [agentUrl, vmInfo?.status]);
@@ -162,7 +172,20 @@ const VMDetails = () => {
                 }
             }
         },
-        plugins: { legend: { display: false } }
+        plugins: {
+            legend: { display: false },
+            zoom: {
+                zoom: {
+                    wheel: { enabled: true },
+                    pinch: { enabled: true },
+                    mode: 'x',
+                },
+                pan: {
+                    enabled: true,
+                    mode: 'x',
+                }
+            }
+        }
     };
 
     return (
@@ -227,6 +250,23 @@ const VMDetails = () => {
                             <p className="text-gray-500 mt-4">
                                 You can still view historical data and manage stored metrics using the tabs above.
                             </p>
+                        </div>
+                    ) : connectionStatus === 'error' ? (
+                        <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center">
+                            <Activity className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                            <h2 className="text-2xl font-bold text-red-600 mb-2">Connection Failed</h2>
+                            <p className="text-gray-600 text-lg">
+                                Unable to establish a real-time connection to the agent at <span className="font-mono bg-gray-100 rounded px-1">{agentUrl}</span>.
+                            </p>
+                            <p className="text-gray-500 mt-4">
+                                The agent may be unreachable, restarting, or behind a restrictive firewall. Please try again later or check agent logs.
+                            </p>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                            >
+                                Retry Connection
+                            </button>
                         </div>
                     ) : !latest ? (
                         <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center">

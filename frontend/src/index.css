@@ -3,5 +3,117 @@
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  * {
+    scroll-behavior: smooth;
   }
 }
+
+@layer components {
+  .stat-card {
+    @apply transition-all duration-200;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .nav-item {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+@layer utilities {
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  .animation-delay-700 {
+    animation-delay: 700ms;
+  }
+  .animation-delay-1000 {
+    animation-delay: 1000ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Login right-panel entrance */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.login-card-enter {
+  animation: slideInRight 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Feature bullet stagger fade-up */
+@keyframes bulletFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.feature-bullet {
+  opacity: 0;
+  animation: bulletFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Terminal log-line sequential fade */
+@keyframes logFade {
+  0%, 100% { opacity: 0; }
+  10%, 85%  { opacity: 1; }
+}
+
+.log-line-1 { animation: logFade 4s ease-in-out 0s infinite; }
+.log-line-2 { animation: logFade 4s ease-in-out 0.8s infinite; }
+.log-line-3 { animation: logFade 4s ease-in-out 1.6s infinite; }
+.log-line-4 { animation: logFade 4s ease-in-out 2.4s infinite; }
+.log-line-5 { animation: logFade 4s ease-in-out 3.2s infinite; }
+
+/* Left-panel orb animations */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(20px, -15px) scale(1.05); }
+  66%       { transform: translate(-10px, 10px) scale(0.97); }
+}
+
+@keyframes float-slower {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-25px, 20px) scale(1.08); }
+  75%       { transform: translate(15px, -10px) scale(0.95); }
+}
+
+.orb-1 { animation: float-slow 9s ease-in-out infinite; }
+.orb-2 { animation: float-slower 12s ease-in-out infinite; }
+.orb-3 { animation: float-slow 7s ease-in-out infinite reverse; }

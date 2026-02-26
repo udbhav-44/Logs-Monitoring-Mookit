@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Download, TrendingUp, RefreshCw } from 'lucide-react';
 import config from '../config';
+import { toast } from '../../components/Toast';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -12,6 +13,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { Line } from 'react-chartjs-2';
 import { LTTB } from 'downsample';
 
@@ -23,7 +25,8 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    Filler
+    Filler,
+    zoomPlugin
 );
 
 const HistoricalData = ({ vmId, hostname }) => {
@@ -108,7 +111,7 @@ const HistoricalData = ({ vmId, hostname }) => {
 
             // Validate date range
             if (new Date(start) > new Date(end)) {
-                alert('Start date must be before end date');
+                toast.error('Start date must be before end date');
                 return;
             }
 
@@ -133,7 +136,7 @@ const HistoricalData = ({ vmId, hostname }) => {
             fetchHistoricalData(start, end, true);
             setShowCustomRange(false);
         } else {
-            alert('Please select both start and end dates');
+            toast.error('Please select both start and end dates');
         }
     };
 
@@ -317,6 +320,17 @@ const HistoricalData = ({ vmId, hostname }) => {
             tooltip: {
                 mode: 'index',
                 intersect: false,
+            },
+            zoom: {
+                zoom: {
+                    wheel: { enabled: true },
+                    pinch: { enabled: true },
+                    mode: 'x',
+                },
+                pan: {
+                    enabled: true,
+                    mode: 'x',
+                }
             }
         },
         interaction: {
@@ -442,6 +456,7 @@ const HistoricalData = ({ vmId, hostname }) => {
                                     setSelectedPeriod('1h');
                                 }}
                                 className="bg-transparent border-none text-gray-500 hover:text-gray-900 text-2xl cursor-pointer"
+                                aria-label="Close custom range selector"
                             >
                                 ✕
                             </button>
@@ -502,6 +517,7 @@ const HistoricalData = ({ vmId, hostname }) => {
                             <button
                                 onClick={() => setSelectedDataPoint(null)}
                                 className="bg-transparent border-none text-gray-500 hover:text-gray-900 text-2xl cursor-pointer"
+                                aria-label="Close detailed metrics"
                             >
                                 ✕
                             </button>

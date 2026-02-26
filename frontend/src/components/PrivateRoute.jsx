@@ -8,6 +8,19 @@ const PrivateRoute = ({ children }) => {
         return <Navigate to="/login" replace />;
     }
 
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp && payload.exp < Date.now() / 1000) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            return <Navigate to="/login" replace />;
+        }
+    } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return <Navigate to="/login" replace />;
+    }
+
     return children;
 };
 

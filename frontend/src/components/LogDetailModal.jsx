@@ -1,7 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Copy, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
-const LogDetailModal = ({ log, onClose }) => {
+const CopyButton = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+      title="Copy to clipboard"
+    >
+      {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+    </button>
+  );
+};
+
+const LogDetailModal = ({ log, onClose, onPrev, onNext }) => {
   if (!log) return null;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' && onPrev) onPrev();
+      if (e.key === 'ArrowRight' && onNext) onNext();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onPrev, onNext]);
 
   const keyLabels = {
     ip: 'IP',
@@ -36,9 +65,21 @@ const LogDetailModal = ({ log, onClose }) => {
             <p className="text-xs text-gray-500">Log Detail</p>
             <h3 className="text-lg font-semibold text-gray-900">{new Date(log.timestamp.endsWith('Z') ? log.timestamp : log.timestamp + 'Z').toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</h3>
           </div>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-sm px-3 py-1 border border-gray-200 rounded-lg bg-white">
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            {onPrev && (
+              <button onClick={onPrev} className="p-2 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200" title="Previous Log (Left Arrow)">
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            {onNext && (
+              <button onClick={onNext} className="p-2 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200" title="Next Log (Right Arrow)">
+                <ChevronRight size={18} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg transition-colors border border-gray-200 ml-2" title="Close (Escape)">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-5 overflow-y-auto">
@@ -61,9 +102,12 @@ const LogDetailModal = ({ log, onClose }) => {
             </div>
           </div>
 
-          <div className="border border-gray-100 rounded-lg p-4 bg-gray-50">
-            <p className="text-xs text-gray-500 mb-2">Raw Message</p>
-            <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words font-mono leading-relaxed">{log.rawMessage}</pre>
+          <div className="border border-gray-100 rounded-lg p-4 bg-gray-50 group">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">Raw Message</p>
+              <CopyButton text={log.rawMessage} />
+            </div>
+            <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words font-mono leading-relaxed bg-white border border-gray-200 p-3 rounded-lg overflow-x-auto">{log.rawMessage}</pre>
           </div>
 
           <div className="border border-gray-100 rounded-lg p-4 bg-gray-50">
@@ -72,8 +116,11 @@ const LogDetailModal = ({ log, onClose }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {entries.map((entry) => (
                 <div key={entry.key} className={`space-y-1 ${entry.fullWidth ? 'md:col-span-2' : ''}`}>
-                  <p className="text-xs text-gray-500">{entry.label}</p>
-                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 font-mono break-words leading-relaxed">
+                  <div className="flex items-center justify-between pr-1">
+                    <p className="text-xs text-gray-500">{entry.label}</p>
+                    <CopyButton text={entry.value} />
+                  </div>
+                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 font-mono break-words leading-relaxed overflow-x-auto">
                     {entry.value}
                   </div>
                 </div>

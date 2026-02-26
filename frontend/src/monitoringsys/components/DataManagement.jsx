@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Trash2, BarChart3, AlertCircle, RefreshCw } from 'lucide-react';
 import config from '../config';
+import { toast } from '../../components/Toast';
 
 const DataManagement = ({ vmId, hostname }) => {
     const [storageStats, setStorageStats] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const refreshInterval = 30; // Fixed 30 seconds
 
@@ -45,7 +45,7 @@ const DataManagement = ({ vmId, hostname }) => {
         }
 
         setLoading(true);
-        setMessage('');
+        setLoading(true);
 
         try {
             const response = await fetch(`${config.SERVER_URL}/api/metrics/${vmId}?period=${period}`, {
@@ -54,13 +54,13 @@ const DataManagement = ({ vmId, hostname }) => {
             const result = await response.json();
 
             if (result.success) {
-                setMessage(`✓ ${result.message}`);
+                toast.success(result.message);
                 fetchStorageStats(); // Refresh stats
             } else {
-                setMessage(`✗ Failed to delete data`);
+                toast.error('Failed to delete data');
             }
         } catch (error) {
-            setMessage(`✗ Error: ${error.message}`);
+            toast.error(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -172,15 +172,6 @@ const DataManagement = ({ vmId, hostname }) => {
                     </button>
                 </div>
             </div>
-
-            {message && (
-                <div className={`p-3 rounded-lg text-sm font-medium mb-4 ${message.startsWith('✓')
-                        ? 'bg-green-50 text-green-700 border border-green-200'
-                        : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}>
-                    {message}
-                </div>
-            )}
 
             <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
                 <div className="flex items-center gap-2 mb-2 text-orange-800">

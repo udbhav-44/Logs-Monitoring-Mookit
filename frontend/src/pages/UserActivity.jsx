@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Clock, MapPin, ExternalLink } from 'lucide-react';
+import { Search, User, Clock, MapPin, ExternalLink, Check } from 'lucide-react';
 import { fetchUids, fetchUserActivity } from '../lib/api';
 
 const TIMEFRAMES = [
@@ -25,6 +25,7 @@ const UserActivity = () => {
   const [uidDirectoryLoading, setUidDirectoryLoading] = useState(false);
   const [uidDirectoryError, setUidDirectoryError] = useState('');
   const [uidFilter, setUidFilter] = useState('');
+  const [copied, setCopied] = useState(false);
   const knownIps = activity?.summary?.ips || [];
   const topActions = activity?.summary?.topActions || [];
   const navigate = useNavigate();
@@ -128,6 +129,8 @@ const UserActivity = () => {
     if (!activity?.uid || !navigator?.clipboard) return;
     try {
       await navigator.clipboard.writeText(activity.uid);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       console.error(err);
     }
@@ -253,9 +256,9 @@ const UserActivity = () => {
               <button
                 type="button"
                 onClick={handleCopyUid}
-                className="px-3 py-1.5 text-xs font-semibold border rounded-lg text-gray-600 hover:text-gray-900"
+                className="px-3 py-1.5 text-xs font-semibold border rounded-lg text-gray-600 hover:text-gray-900 flex items-center justify-center gap-1 min-w-[85px]"
               >
-                Copy UID
+                {copied ? <><Check size={14} className="text-green-600" /> Copied</> : 'Copy UID'}
               </button>
               <button
                 type="button"

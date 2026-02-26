@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2, X, Calendar, Server, AlertTriangle, Check } from 'lucide-react';
 import { deletePartition } from '../lib/api';
 
@@ -9,9 +9,17 @@ const DeleteLogModal = ({ app, vmIds, onClose, onSuccess }) => {
     const [error, setError] = useState('');
     const [confirmText, setConfirmText] = useState('');
 
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     const handleDelete = async () => {
         if (!selectedVm || !month) return;
-        if (confirmText !== 'delete') return;
+        if (confirmText.toLowerCase() !== 'delete') return;
 
         const formattedMonth = month.replace('-', '');
 
@@ -28,7 +36,7 @@ const DeleteLogModal = ({ app, vmIds, onClose, onSuccess }) => {
         }
     };
 
-    const isConfirmed = confirmText === 'delete';
+    const isConfirmed = confirmText.toLowerCase() === 'delete';
 
     return (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">

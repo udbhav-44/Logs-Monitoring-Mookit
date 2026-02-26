@@ -6,6 +6,7 @@ const AlertsPanel = ({ vmId, socket }) => {
   const [stats, setStats] = useState(null);
   const [severityFilter, setSeverityFilter] = useState('all'); // all, warning, critical
   const [loading, setLoading] = useState(true);
+  const [permission, setPermission] = useState(Notification.permission);
 
   useEffect(() => {
     if (!vmId) return;
@@ -72,9 +73,10 @@ const AlertsPanel = ({ vmId, socket }) => {
     }
   };
 
-  const requestNotificationPermission = () => {
+  const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      const perm = await Notification.requestPermission();
+      setPermission(perm);
     }
   };
 
@@ -122,7 +124,7 @@ const AlertsPanel = ({ vmId, socket }) => {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Alerts</h2>
-        {Notification.permission === 'default' && (
+        {permission === 'default' && (
           <button onClick={requestNotificationPermission} className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
             Enable Notifications
           </button>
@@ -171,10 +173,10 @@ const AlertsPanel = ({ vmId, socket }) => {
             <div
               key={alert.id}
               className={`p-4 rounded-lg border ${alert.severity === 'critical'
-                  ? 'bg-red-50 border-red-200'
-                  : alert.severity === 'warning'
-                    ? 'bg-orange-50 border-orange-200'
-                    : 'bg-gray-50 border-gray-200'
+                ? 'bg-red-50 border-red-200'
+                : alert.severity === 'warning'
+                  ? 'bg-orange-50 border-orange-200'
+                  : 'bg-gray-50 border-gray-200'
                 }`}
             >
               <div className="flex justify-between items-start mb-2">

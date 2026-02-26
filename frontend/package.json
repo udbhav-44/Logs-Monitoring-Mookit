@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "animejs": "^3.2.2",
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
+    "chartjs-plugin-zoom": "^2.2.0",
     "date-fns": "^4.1.0",
     "downsample": "^1.4.0",
     "lucide-react": "^0.562.0",
