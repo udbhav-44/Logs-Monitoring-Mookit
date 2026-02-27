@@ -42,7 +42,7 @@ const Login = () => {
         setLoading(true);
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5002`;
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:5002`;
             const res = await fetch(`${baseUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

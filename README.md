@@ -233,36 +233,57 @@ sudo systemctl enable --now log-backend log-agent log-frontend
 
 ## Docker Deployment
 
-You can run the entire stack (Backend, Frontend, ClickHouse) using Docker Compose.
+You can run the entire stack (Backend, Frontend, ClickHouse, and InfluxDB) using Docker Compose.
 
 ### Prerequisites
-- Docker & Docker Compose installed.
+- Docker & Docker Compose plugin installed (use `docker compose`, not the legacy `docker-compose`).
 
 ### Run with Docker
-1. **Configure Environment**
+1. **Configure Environment Variables**
    - Ensure `backend/.env` has the correct `ALERT_TO_EMAIL` and SMTP settings.
-   - The `CLICKHOUSE_HOST` in `backend/.env` will be overridden by docker-compose to point to the `clickhouse` container automatically.
+   - The `CLICKHOUSE_HOST` in `backend/.env` is overridden by docker-compose to point to the `clickhouse` container automatically.
+   - **CRITICAL:** Update `frontend/.env` with your server's Public or Private IP so the browser can reach the backend APIs.
+     ```env
+     VITE_API_BASE_URL=http://<YOUR_SERVER_IP>:5002
+     VITE_SERVER_URL=http://<YOUR_SERVER_IP>:5000
+     ```
 
-2. **Start Services**
+2. **Configure Build Arguments (Optional but Recommended)**
+   - If deploying to a remote server, ensure `docker-compose.yml` passes the frontend IP explicitly during the build stage:
+     ```yaml
+       frontend:
+         build:
+           context: ./frontend
+           args:
+             - VITE_SERVER_URL=http://<YOUR_SERVER_IP>:5000
+             - VITE_API_BASE_URL=http://<YOUR_SERVER_IP>:5002
+     ```
+   - *Note: Vite requires these variables at build time to bake the IP into the static HTML/JS bundle.*
+
+3. **Start Services**
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build
    ```
 
-3. **Access Application**
-   - Frontend: `http://localhost:80` (or just `http://localhost`)
-   - Backend API: `http://localhost:5002`
-   - ClickHouse: `http://localhost:8123`
+4. **Firewall Configuration (Cloud Deployments)**
+   If you are deploying this on a cloud provider (AWS EC2, GCP, Azure, Oracle Cloud), you **must** configure your Security Groups / Ingress Firewall Rules to allow inbound TCP traffic on the following ports:
+   - **Port 80**: Frontend UI
+   - **Port 5000**: Telemetry WebSocket Backend
+   - **Port 5002**: Log Analytics Backend API
 
-4. **Stop Services**
+5. **Access Application**
+   - Frontend: `http://<YOUR_SERVER_IP>`
+   - Backend API: `http://<YOUR_SERVER_IP>:5002`
+
+6. **Stop Services**
    ```bash
-   docker-compose down
+   docker compose down
    ```
 
-5. **View Logs**
+7. **View Logs**
    ```bash
-   docker-compose logs -f
+   docker compose logs -f
    ```
-
 
 ## TO-DO
 

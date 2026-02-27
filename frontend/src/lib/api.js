@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Get base URL dynamically
-const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5002`;
+const API_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:5002`;
 
 const api = axios.create({
   baseURL: API_URL,
