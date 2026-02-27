@@ -34,8 +34,8 @@ module.exports = {
         },
         {
             name: 'monitoring-agent',
-            script: 'venv/bin/python3',
-            args: 'agent.py',
+            script: 'node',
+            args: 'agent.js',
             cwd: './monitoring-agent'
         }
     ]
