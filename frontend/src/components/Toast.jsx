@@ -44,9 +44,9 @@ export const Toaster = () => {
   return (
     <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
       {toasts.map(t => (
-        <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium pointer-events-auto transition-all ${t.type === 'error' ? 'bg-red-50 text-red-900 border border-red-200' :
-            t.type === 'success' ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' :
-              'bg-white text-gray-900 border border-gray-200'
+        <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium pointer-events-auto transition-all backdrop-blur-md ${t.type === 'error' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+            t.type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+              'bg-white/10 text-white border border-white/15'
           }`}>
           <span>{t.message}</span>
           <button onClick={() => removeToast(t.id)} className="text-gray-400 hover:text-gray-600 ml-2 focus:outline-none">

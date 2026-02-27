@@ -25,7 +25,7 @@ const Breadcrumb = () => {
         <nav className="flex items-center text-sm font-medium text-gray-500 mb-6" aria-label="Breadcrumb">
             <Link
                 to="/"
-                className="flex items-center hover:text-indigo-600 transition-colors"
+                className="flex items-center hover:text-indigo-400 transition-colors"
             >
                 <Home className="w-4 h-4 mr-1" />
                 Overview
@@ -43,11 +43,11 @@ const Breadcrumb = () => {
                     <div key={to} className="flex items-center">
                         <ChevronRight className="w-4 h-4 mx-1 text-gray-400" />
                         {last ? (
-                            <span className="text-gray-900 font-semibold" aria-current="page">
+                            <span className="text-white font-semibold" aria-current="page">
                                 {label}
                             </span>
                         ) : (
-                            <Link to={to} className="hover:text-indigo-600 transition-colors">
+                            <Link to={to} className="hover:text-indigo-400 transition-colors">
                                 {label}
                             </Link>
                         )}

@@ -1,6 +1,0 @@
-requests
-psutil
-flask
-python-socketio
-aiohttp
-aiohttp-cors
