@@ -7,6 +7,12 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+ARG VITE_API_BASE_URL
+ARG VITE_SERVER_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_SERVER_URL=$VITE_SERVER_URL
+
 RUN npm run build
 
 # Production Stage

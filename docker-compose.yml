@@ -6,8 +6,13 @@ services:
     image: clickhouse/clickhouse-server:latest
     container_name: log_monitor_db
     ports:
-      - "8123:8123"  # HTTP Interface
-      - "9000:9000"  # Native Client Interface
+      - "8123:8123" # HTTP Interface
+      - "9000:9000" # Native Client Interface
+    environment:
+      - CLICKHOUSE_DB=logs
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=login123
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ulimits:
@@ -15,7 +20,7 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      test: [ "CMD", "wget", "--spider", "-q", "localhost:8123/ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,32 +55,75 @@ services:
         condition: service_healthy
     ports:
       - "5002:5002"
+    env_file:
+      - ./backend/.env
     environment:
-      - PORT=5002
+      # These override values from .env
+      - HOST=0.0.0.0
       - CLICKHOUSE_HOST=http://clickhouse:8123
-      - CLICKHOUSE_DB=logs
-      - ALERT_TO_EMAIL=${ALERT_TO_EMAIL:-}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
     networks:
       - log_network
     restart: always
 
   # 3. Log Frontend UI
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_SERVER_URL=/monitoring
     container_name: log_monitor_frontend
     depends_on:
       - backend
     ports:
-      - "80:80"        # Host Port 80 -> Container 80
+      - "80:80" # Host Port 80 -> Container 80
     networks:
       - log_network
+    restart: always
+
+  # 4. Monitoring Backend (Discovery/Storage)
+  monitoring_backend:
+    build: ./monitoring-server
+    container_name: monitoring_backend
+    depends_on:
+      - influxdb
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DATABASE_TYPE=influxdb
+      - INFLUXDB_HOST=http://influxdb:8086
+      - INFLUXDB_TOKEN=my-super-secret-auth-token
+      - INFLUXDB_ORG=monitoring-org
+      - INFLUXDB_BUCKET=monitoring
+    networks:
+      - log_network
+    restart: always
+
+  # 5. Monitoring Agent
+  monitoring_agent:
+    build: ./monitoring-agent
+    container_name: monitoring_agent
+    depends_on:
+      - monitoring_backend
+    # Use host network for accurate system monitoring or volume mount /host if possible.
+    # We will use privileged / PID / Network host mode for the agent to get true host metrics.
+    pid: "host"
+    network_mode: "host"
+    privileged: true
+    volumes:
+      - /:/hostfs:ro # Allow container to read host filesystem info
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Allow checking docker
+      - /run/systemd/private:/run/systemd/private:ro # Allow checking systemd if passed
+    environment:
+      - SERVER_URL=http://localhost:5000
+      - VM_ID=vm-host-agent
+      - HOSTNAME=docker-host
     restart: always
 
 volumes:
   clickhouse_data:
   influxdb_data:
+
 
 networks:
   log_network:
