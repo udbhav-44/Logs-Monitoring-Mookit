@@ -94,7 +94,7 @@ const Layout = ({ children }) => {
             )}
 
             {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900/80 backdrop-blur-xl border-r border-white/10 flex flex-col shadow-sm transform transition-transform duration-200 ease-in-out md:relative md:tranneutral-x-0${isMobileMenuOpen ? 'tranneutral-x-0' : '-tranneutral-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900/80 backdrop-blur-xl border-r border-white/10 flex flex-col shadow-sm transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 {/* Logo */}
                 <div ref={logoRef} className="p-6 flex items-center justify-between" style={{ opacity: 0 }}>
                     <div className="flex items-center gap-2.5">
@@ -131,7 +131,7 @@ const Layout = ({ children }) => {
                         >
                             {({ isActive }) => (
                                 <>
-                                    <span className={`flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150${isActive ? 'bg-blue-600 text-white shadow-sm shadow-blue-300/30' : 'text-gray-400 group-hover:text-white' }`}>
+                                    <span className={`flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150${isActive ? 'bg-blue-600 text-white shadow-sm shadow-blue-300/30' : 'text-gray-400 group-hover:text-white'}`}>
                                         <item.icon className="w-4 h-4" />
                                     </span>
                                     {item.label}

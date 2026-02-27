@@ -110,10 +110,10 @@ const DeleteLogModal = ({ app, vmIds, onClose, onSuccess }) => {
                                 value={confirmText}
                                 onChange={(e) => setConfirmText(e.target.value)}
                                 placeholder="delete"
-                                className={`w-full px-4 py-3 text-lg tracking-widest border-2 rounded-xl text-center font-bold outline-none transition-all placeholder:font-normal placeholder:text-gray-400 placeholder:tracking-normal glass-panel/5${isConfirmed ? 'border-green-500/50 text-green-400' : 'border-white/10 text-white focus:border-red-500/60 focus:ring-4 focus:ring-red-500/10' }`}
+                                className={`w-full px-4 py-3 text-lg tracking-widest border-2 rounded-xl text-center font-bold outline-none transition-all placeholder:font-normal placeholder:text-gray-400 placeholder:tracking-normal glass-panel/5${isConfirmed ? 'border-green-500/50 text-green-400' : 'border-white/10 text-white focus:border-red-500/60 focus:ring-4 focus:ring-red-500/10'}`}
                             />
                             {isConfirmed && (
-                                <div className="absolute top-1/2 left-1/2 -tranneutral-x-1/2 -tranneutral-y-1/2 text-green-400 animate-in zoom-in fade-in duration-300">
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-400 animate-in zoom-in fade-in duration-300">
                                     <Check size={24} strokeWidth={3} />
                                 </div>
                             )}
@@ -137,7 +137,7 @@ const DeleteLogModal = ({ app, vmIds, onClose, onSuccess }) => {
                             <button
                                 onClick={handleDelete}
                                 disabled={loading || !isConfirmed}
-                                className={`flex-[2] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-lg transition-all flex items-center justify-center gap-2${isConfirmed ? 'bg-red-600 hover:bg-red-700 hover:shadow-red-900/30 active:scale-[0.98]' : 'glass-panel/10 text-gray-400 shadow-none cursor-not-allowed' }`}
+                                className={`flex-[2] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-lg transition-all flex items-center justify-center gap-2${isConfirmed ? 'bg-red-600 hover:bg-red-700 hover:shadow-red-900/30 active:scale-[0.98]' : 'glass-panel/10 text-gray-400 shadow-none cursor-not-allowed'}`}
                             >
                                 {loading ? (
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

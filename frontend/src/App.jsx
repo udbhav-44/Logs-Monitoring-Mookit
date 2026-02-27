@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -10,15 +9,6 @@ import MonitoringDashboard from './monitoringsys/pages/Dashboard';
 import VMDetails from './monitoringsys/pages/VMDetails';
 import AlertRulesConfig from './monitoringsys/components/AlertRulesConfig';
 
-// Placeholder components until fully implemented
-const Placeholder = ({ title }) => (
-  <div>
-    <h1 className="text-2xl font-bold mb-4">{title}</h1>
-    <div className="glass-card p-6 rounded-lg border border-white/10">
-      <p className="text-gray-400">Component under construction.</p>
-    </div>
-  </div>
-);
 
 import Login from './pages/Login';
 import PrivateRoute from './components/PrivateRoute';

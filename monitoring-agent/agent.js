@@ -28,12 +28,12 @@ try {
 }
 
 // Ensure the server_url from config points to the root of the backend discovery server
-let SERVER_URL = config.server_url || 'http://localhost:5000';
+let SERVER_URL = process.env.SERVER_URL || config.server_url || 'http://localhost:5000';
 let DISCOVERY_URL = SERVER_URL.includes('/api/') ? SERVER_URL.split('/api/')[0] : SERVER_URL.replace(/\/$/, "");
 
-const AGENT_PORT = 5001;
-const VM_ID = config.vm_id;
-const HOSTNAME = config.hostname || os.hostname();
+const AGENT_PORT = process.env.AGENT_PORT || 5001;
+const VM_ID = process.env.VM_ID || config.vm_id || 'vm-default';
+const HOSTNAME = process.env.HOSTNAME || config.hostname || os.hostname();
 let BROADCAST_INTERVAL = config.broadcast_interval || 0.5;
 let STORAGE_INTERVAL = config.storage_interval || 5;
 const SERVICES_MONITOR = config.services_to_monitor || [];
