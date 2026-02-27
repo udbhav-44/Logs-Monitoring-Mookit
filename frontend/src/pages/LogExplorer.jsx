@@ -13,7 +13,7 @@ const HighlightText = ({ text, highlight }) => {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === highlight.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>
+          <mark key={i} className="bg-yellow-200 text-white rounded px-0.5">{part}</mark>
         ) : (
           part
         )
@@ -149,8 +149,8 @@ const LogExplorer = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Log Explorer</h1>
-          <p className="text-gray-500">Search by UID, course, IP, status, source, and time range.</p>
+          <h1 className="text-2xl font-bold text-gray-100">Log Explorer</h1>
+          <p className="text-gray-400">Search by UID, course, IP, status, source, and time range.</p>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -159,26 +159,26 @@ const LogExplorer = () => {
               setPageSize(Number(e.target.value));
               setPage(1);
             }}
-            className="border rounded-lg text-sm px-3 py-2 bg-white"
+            className="border rounded-lg text-sm px-3 py-2 glass-card"
           >
             {[25, 50, 100, 200, 500].map(size => (
               <option key={size} value={size}>{size} per page</option>
             ))}
           </select>
-          <button onClick={() => fetchLogs(page)} className="text-gray-600 hover:text-indigo-600 flex items-center gap-2">
+          <button onClick={() => fetchLogs(page)} className="text-gray-300 hover:text-blue-600 flex items-center gap-2">
             <RefreshCw size={18} />
             Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div className="glass-card p-4 rounded-xl border border-white/10">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
           <input name="ip" placeholder="IP Address" className="px-4 py-2 border rounded-lg" value={filters.ip} onChange={handleFilterChange} />
           <input name="uid" placeholder="User ID" className="px-4 py-2 border rounded-lg" value={filters.uid} onChange={handleFilterChange} />
           <input name="course" placeholder="Course Code" className="px-4 py-2 border rounded-lg" value={filters.course} onChange={handleFilterChange} />
 
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg text-gray-700">
+          <select name="status" value={filters.status} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg text-gray-200">
             <option value="">Status (All)</option>
             <option value="200">200 OK</option>
             <option value="201">201 Created</option>
@@ -191,13 +191,13 @@ const LogExplorer = () => {
             <option value="503">503 Service Unavailable</option>
           </select>
 
-          <select name="sourceType" value={filters.sourceType} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg text-gray-700">
+          <select name="sourceType" value={filters.sourceType} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg text-gray-200">
             <option value="">Source</option>
             <option value="nginx">nginx</option>
             <option value="app">app</option>
             <option value="db">db</option>
           </select>
-          <select name="range" value={filters.range} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg bg-indigo-50 border-indigo-100 font-medium">
+          <select name="range" value={filters.range} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg glass-panel/5 border-white/10 font-medium">
             <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
@@ -207,29 +207,29 @@ const LogExplorer = () => {
           <input name="vmId" placeholder="VM ID" className="px-4 py-2 border rounded-lg" value={filters.vmId} onChange={handleFilterChange} />
 
           <div className="relative">
-            <span className="absolute -top-2 left-2 bg-white px-1 text-[10px] font-semibold text-gray-400">Start (Local Time)</span>
-            <input name="start" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-700" value={filters.start} onChange={handleFilterChange} />
+            <span className="absolute -top-2 left-2 bg-transparent px-1 text-[10px] font-semibold text-gray-400">Start (Local Time)</span>
+            <input name="start" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-200" value={filters.start} onChange={handleFilterChange} />
           </div>
 
           <div className="relative">
-            <span className="absolute -top-2 left-2 bg-white px-1 text-[10px] font-semibold text-gray-400">End (Local Time)</span>
-            <input name="end" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-700" value={filters.end} onChange={handleFilterChange} />
+            <span className="absolute -top-2 left-2 bg-transparent px-1 text-[10px] font-semibold text-gray-400">End (Local Time)</span>
+            <input name="end" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-200" value={filters.end} onChange={handleFilterChange} />
           </div>
 
           <input name="search" placeholder="Full-text search" className="px-4 py-2 border rounded-lg md:col-span-2" value={filters.search} onChange={handleFilterChange} />
           <div className="md:col-span-2 lg:col-span-2 flex gap-3">
-            <button type="submit" className="flex-1 bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
+            <button type="submit" className="flex-1 glass-button text-white px-6 py-2 rounded-lg font-medium hover:glass-panel/20 flex items-center justify-center gap-2">
               <Search size={18} /> Search
             </button>
           </div>
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+      <div className="glass-card rounded-xl border border-white/10 overflow-hidden">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center">
           <div className="flex gap-2">
-            <span className="font-bold text-gray-700">{total}</span>
-            <span className="text-gray-500">results</span>
+            <span className="font-bold text-gray-200">{total}</span>
+            <span className="text-gray-400">results</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -239,11 +239,11 @@ const LogExplorer = () => {
                 setPage(next);
                 setSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)), page: next });
               }}
-              className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-50"
+              className="px-3 py-1 border rounded text-sm hover:glass-panel/10 disabled:opacity-50"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-300">
               {page} / {totalPages}
             </span>
             <button
@@ -253,17 +253,17 @@ const LogExplorer = () => {
                 setPage(next);
                 setSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)), page: next });
               }}
-              className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-50"
+              className="px-3 py-1 border rounded text-sm hover:glass-panel/10 disabled:opacity-50"
             >
               Next
             </button>
           </div>
-          {loading && <span className="text-sm text-gray-500">Loading...</span>}
+          {loading && <span className="text-sm text-gray-400">Loading...</span>}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 text-gray-600 font-medium">
+            <thead className="glass-panel/5 text-gray-300 font-medium">
               <tr>
                 <SortableHeader label="Timestamp" field="timestamp" currentSortBy={filters.sortBy} currentSortOrder={filters.sortOrder} onSort={handleSort}>
                   <span className="text-xs text-gray-400 font-normal">(Local)</span>
@@ -282,47 +282,43 @@ const LogExplorer = () => {
               {logs.map((log) => (
                 <tr
                   key={log._id || `${log.timestamp}-${log.rawMessage}`}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="hover:glass-panel/10 cursor-pointer"
                   onClick={() => setSelectedLog(log)}
                 >
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(log.timestamp.endsWith('Z') ? log.timestamp : log.timestamp + 'Z').toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
-                  <td className="px-4 py-3 capitalize text-gray-700">{log.sourceType || log.appInfo?.source || '-'}</td>
-                  <td className="px-4 py-3 text-gray-700">
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-400">{new Date(log.timestamp.endsWith('Z') ? log.timestamp : log.timestamp + 'Z').toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+                  <td className="px-4 py-3 capitalize text-gray-200">{log.sourceType || log.appInfo?.source || '-'}</td>
+                  <td className="px-4 py-3 text-gray-200">
                     <div className="font-semibold">{log.appInfo?.name || '-'}</div>
-                    <div className="text-xs text-gray-500">{log.appInfo?.vmId || ''}</div>
+                    <div className="text-xs text-gray-400">{log.appInfo?.vmId || ''}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${Number(log.parsedData?.status) >= 500 ? 'bg-red-100 text-red-700' :
-                        Number(log.parsedData?.status) >= 400 ? 'bg-orange-100 text-orange-700' :
-                          Number(log.parsedData?.status) >= 300 ? 'bg-blue-100 text-blue-700' :
-                            'bg-green-100 text-green-700'
-                        }`}
+                      className={`px-2 py-1 rounded text-xs font-medium${Number(log.parsedData?.status) >= 500 ? 'bg-red-100 text-red-700' : Number(log.parsedData?.status) >= 400 ? 'bg-orange-100 text-orange-700' : Number(log.parsedData?.status) >= 300 ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }`}
                       onClick={(e) => { e.stopPropagation(); quickFilter('status', log.parsedData?.status); }}
                     >
                       {log.parsedData?.status || 'N/A'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-gray-600">
+                  <td className="px-4 py-3 font-mono text-gray-300">
                     <HighlightText text={log.parsedData?.method || '-'} highlight={filters.search} />
                   </td>
                   <td className="px-4 py-3 max-w-xs truncate" title={log.parsedData?.url || log.parsedData?.message}>
                     <HighlightText text={log.parsedData?.url || log.parsedData?.message || log.rawMessage} highlight={filters.search} />
                   </td>
                   <td
-                    className="px-4 py-3 text-gray-500 underline-offset-2"
+                    className="px-4 py-3 text-gray-400 underline-offset-2"
                     onClick={(e) => { e.stopPropagation(); quickFilter('course', log.parsedData?.course); }}
                   >
                     <HighlightText text={log.parsedData?.course || '-'} highlight={filters.search} />
                   </td>
                   <td
-                    className="px-4 py-3 text-gray-500 underline-offset-2"
+                    className="px-4 py-3 text-gray-400 underline-offset-2"
                     onClick={(e) => { e.stopPropagation(); quickFilter('ip', log.parsedData?.ip); }}
                   >
                     <HighlightText text={log.parsedData?.ip || '-'} highlight={filters.search} />
                   </td>
                   <td
-                    className="px-4 py-3 text-gray-500 underline-offset-2"
+                    className="px-4 py-3 text-gray-400 underline-offset-2"
                     onClick={(e) => { e.stopPropagation(); quickFilter('uid', log.parsedData?.uid); }}
                   >
                     <HighlightText text={log.parsedData?.uid || '-'} highlight={filters.search} />
@@ -337,7 +333,7 @@ const LogExplorer = () => {
           <div className="p-8 text-center text-gray-400">No logs found matching criteria.</div>
         )}
 
-        <div className="p-4 border-t border-gray-100 flex justify-between items-center">
+        <div className="p-4 border-t border-white/10 flex justify-between items-center">
           <button
             disabled={page === 1}
             onClick={() => {
@@ -345,11 +341,11 @@ const LogExplorer = () => {
               setPage(next);
               setSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)), page: next });
             }}
-            className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 border rounded hover:glass-panel/10 disabled:opacity-50"
           >
             Previous
           </button>
-          <span className="text-gray-600">
+          <span className="text-gray-300">
             Page {page} of {totalPages}
           </span>
           <button
@@ -359,7 +355,7 @@ const LogExplorer = () => {
               setPage(next);
               setSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)), page: next });
             }}
-            className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 border rounded hover:glass-panel/10 disabled:opacity-50"
           >
             Next
           </button>

@@ -117,15 +117,15 @@ const AlertsPanel = ({ vmId, socket }) => {
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-500">Loading alerts...</div>;
+    return <div className="text-center py-12 text-gray-400">Loading alerts...</div>;
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="glass-card rounded-lg border border-white/10 p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Alerts</h2>
+        <h2 className="text-xl font-bold text-white">Alerts</h2>
         {permission === 'default' && (
-          <button onClick={requestNotificationPermission} className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+          <button onClick={requestNotificationPermission} className="px-3 py-1.5 text-sm font-medium text-blue-600 glass-panel/5 hover:bg-blue-100 rounded-lg transition-colors">
             Enable Notifications
           </button>
         )}
@@ -133,28 +133,28 @@ const AlertsPanel = ({ vmId, socket }) => {
 
       {stats && (
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-orange-50 border border-orange-100 p-4 rounded-lg text-center">
+          <div className="glass-panel/5 border border-white/10 p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-orange-600">{stats.warning_count || 0}</div>
             <div className="text-sm font-medium text-orange-800">Warnings (24h)</div>
           </div>
-          <div className="bg-red-50 border border-red-100 p-4 rounded-lg text-center">
+          <div className="glass-panel/5 border border-white/10 p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-red-600">{stats.critical_count || 0}</div>
-            <div className="text-sm font-medium text-red-800">Critical (24h)</div>
+            <div className="text-sm font-medium text-red-400">Critical (24h)</div>
           </div>
-          <div className="bg-gray-50 border border-gray-100 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-gray-700">{stats.total_count || 0}</div>
-            <div className="text-sm font-medium text-gray-600">Total (24h)</div>
+          <div className="glass-panel/5 border border-white/10 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-gray-200">{stats.total_count || 0}</div>
+            <div className="text-sm font-medium text-gray-300">Total (24h)</div>
           </div>
         </div>
       )}
 
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700">Severity:</label>
+          <label className="text-sm font-medium text-gray-200">Severity:</label>
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
-            className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="block w-48 rounded-md border-white/10 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           >
             <option value="all">All</option>
             <option value="warning">Warning</option>
@@ -165,38 +165,32 @@ const AlertsPanel = ({ vmId, socket }) => {
 
       <div className="space-y-4">
         {filteredAlerts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+          <div className="text-center py-8 text-gray-400 glass-panel/5 rounded-lg">
             <p>No alerts found</p>
           </div>
         ) : (
           filteredAlerts.map(alert => (
             <div
               key={alert.id}
-              className={`p-4 rounded-lg border ${alert.severity === 'critical'
-                ? 'bg-red-50 border-red-200'
-                : alert.severity === 'warning'
-                  ? 'bg-orange-50 border-orange-200'
-                  : 'bg-gray-50 border-gray-200'
-                }`}
+              className={`p-4 rounded-lg border${alert.severity === 'critical' ? 'bg-red-500/10 border-red-500/30 text-red-200 border-red-200' : alert.severity === 'warning' ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-white/10' }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${alert.severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
+                  <span className={`px-2 py-0.5 text-xs font-bold rounded-full${alert.severity === 'critical' ? 'bg-red-100 text-red-400' : 'bg-orange-100 text-orange-800' }`}>
                     {alert.severity.toUpperCase()}
                   </span>
-                  <span className="text-sm font-semibold text-gray-900">{getMetricTypeLabel(alert.metric_type || alert.metricType)}</span>
+                  <span className="text-sm font-semibold text-white">{getMetricTypeLabel(alert.metric_type || alert.metricType)}</span>
                 </div>
-                <div className="text-xs text-gray-500 font-medium">
+                <div className="text-xs text-gray-400 font-medium">
                   {formatTimestamp(alert.triggered_at || alert.triggeredAt)}
                 </div>
               </div>
 
-              <div className="text-sm text-gray-800 mt-1 mb-3">
+              <div className="text-sm text-gray-100 mt-1 mb-3">
                 {alert.message}
               </div>
 
-              <div className="flex gap-4 text-xs font-mono text-gray-500 bg-white/50 p-2 rounded">
+              <div className="flex gap-4 text-xs font-mono text-gray-400 glass-panel/50 p-2 rounded">
                 <span><span className="text-gray-400">Threshold:</span> {alert.threshold_value || alert.thresholdValue}</span>
                 <span><span className="text-gray-400">Current:</span> {alert.current_value || alert.currentValue}</span>
               </div>

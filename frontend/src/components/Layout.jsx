@@ -70,9 +70,9 @@ const Layout = ({ children }) => {
     return (
         <div className="flex h-screen flex-col md:flex-row">
             {/* Mobile Header */}
-            <div className="md:hidden flex items-center justify-between p-4 bg-slate-900/90 backdrop-blur-xl border-b border-white/10 shrink-0">
+            <div className="md:hidden flex items-center justify-between p-4 bg-neutral-900/90 backdrop-blur-xl border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/30">
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/30">
                         <Activity className="w-4 h-4 text-white" />
                     </div>
                     <h1 className="text-lg font-bold text-white tracking-tight">
@@ -81,7 +81,7 @@ const Layout = ({ children }) => {
                 </div>
                 <button
                     onClick={() => setIsMobileMenuOpen(true)}
-                    className="p-2 -mr-2 text-gray-400 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="p-2 -mr-2 text-gray-400 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     aria-label="Open Menu"
                 >
                     <Menu className="w-6 h-6" />
@@ -90,15 +90,15 @@ const Layout = ({ children }) => {
 
             {/* Mobile Overlay */}
             {isMobileMenuOpen && (
-                <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+                <div className="fixed inset-0 bg-neutral-950/70 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
             )}
 
             {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/80 backdrop-blur-xl border-r border-white/10 flex flex-col shadow-sm transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900/80 backdrop-blur-xl border-r border-white/10 flex flex-col shadow-sm transform transition-transform duration-200 ease-in-out md:relative md:tranneutral-x-0${isMobileMenuOpen ? 'tranneutral-x-0' : '-tranneutral-x-full'}`}>
                 {/* Logo */}
                 <div ref={logoRef} className="p-6 flex items-center justify-between" style={{ opacity: 0 }}>
                     <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/30">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/30">
                             <Activity className="w-4 h-4 text-white" />
                         </div>
                         <h1 className="text-lg font-bold text-white tracking-tight">
@@ -107,7 +107,7 @@ const Layout = ({ children }) => {
                     </div>
                     <button
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="md:hidden p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-white/10"
+                        className="md:hidden p-1.5 text-gray-400 hover:text-white rounded-md hover:glass-panel/10"
                         aria-label="Close Menu"
                     >
                         <X className="w-5 h-5" />
@@ -124,22 +124,19 @@ const Layout = ({ children }) => {
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={({ isActive }) =>
                                 `nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive
-                                    ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400/60'
-                                    : 'text-gray-400 hover:bg-white/8 hover:text-white'
+                                    ? 'bg-blue-500/20 text-blue-300 border-l-2 border-blue-400/60'
+                                    : 'text-gray-400 hover:glass-panel/8 hover:text-white'
                                 }`
                             }
                         >
                             {({ isActive }) => (
                                 <>
-                                    <span className={`flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150 ${isActive
-                                        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/30'
-                                        : 'text-gray-400 group-hover:text-white'
-                                        }`}>
+                                    <span className={`flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150${isActive ? 'bg-blue-600 text-white shadow-sm shadow-blue-300/30' : 'text-gray-400 group-hover:text-white' }`}>
                                         <item.icon className="w-4 h-4" />
                                     </span>
                                     {item.label}
                                     {isActive && (
-                                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
                                     )}
                                 </>
                             )}
@@ -153,7 +150,7 @@ const Layout = ({ children }) => {
                         ref={logoutRef}
                         onClick={handleLogout}
                         style={{ opacity: 0 }}
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium w-full text-left text-gray-500 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition-all duration-150 group"
+                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium w-full text-left text-gray-400 hover:bg-red-500/10 border-red-500/30 text-red-2000/10 hover:text-red-400 rounded-lg transition-all duration-150 group"
                     >
                         <span className="flex items-center justify-center w-7 h-7 rounded-md text-gray-400 group-hover:text-red-400 transition-colors">
                             <LogOut className="w-4 h-4" />

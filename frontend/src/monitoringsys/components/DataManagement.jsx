@@ -89,16 +89,16 @@ const DataManagement = ({ vmId, hostname }) => {
     const currentVmStats = storageStats?.vmStats?.find(vm => vm._id === vmId);
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6 mt-4">
+        <div className="glass-card p-6 rounded-lg border border-white/10 mb-6 mt-4">
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h3 className="flex items-center gap-2 m-0 text-lg font-bold text-gray-900">
-                    <Database size={20} className="text-indigo-600" />
+                <h3 className="flex items-center gap-2 m-0 text-lg font-bold text-white">
+                    <Database size={20} className="text-blue-600" />
                     Data Management - {hostname}
                 </h3>
 
                 {/* Refresh indicator */}
                 {isRefreshing && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                    <div className="flex items-center gap-2 text-sm text-gray-400 font-medium">
                         <RefreshCw size={14} className="text-green-600 animate-spin" />
                         Updating...
                     </div>
@@ -109,9 +109,9 @@ const DataManagement = ({ vmId, hostname }) => {
                 <div className="mb-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         {/* Total Records Card */}
-                        <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-                            <div className="text-sm text-indigo-700 font-semibold mb-2">Total Records</div>
-                            <div className="text-3xl font-bold text-indigo-900">
+                        <div className="p-4 glass-panel/5 rounded-lg border border-white/10">
+                            <div className="text-sm text-blue-700 font-semibold mb-2">Total Records</div>
+                            <div className="text-3xl font-bold text-blue-900">
                                 {storageStats.totalRecords ? storageStats.totalRecords.toLocaleString() : '0'}
                             </div>
                         </div>
@@ -119,15 +119,15 @@ const DataManagement = ({ vmId, hostname }) => {
                         {/* VM-specific stats */}
                         {currentVmStats && (
                             <>
-                                <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                                    <div className="text-sm text-purple-700 font-semibold mb-2">VM Records</div>
-                                    <div className="text-3xl font-bold text-purple-900">
+                                <div className="p-4 glass-panel/5 rounded-lg border border-white/10">
+                                    <div className="text-sm text-cyan-700 font-semibold mb-2">VM Records</div>
+                                    <div className="text-3xl font-bold text-cyan-900">
                                         {currentVmStats.totalRecords ? currentVmStats.totalRecords.toLocaleString() : '0'}
                                     </div>
                                 </div>
 
                                 {currentVmStats.oldestRecord && currentVmStats.newestRecord && (
-                                    <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                                    <div className="p-4 glass-panel/5 rounded-lg border border-white/10">
                                         <div className="text-sm text-green-700 font-semibold mb-2">Data Range</div>
                                         <div className="text-sm font-medium text-green-900">
                                             {formatDate(currentVmStats.oldestRecord)} <br />
@@ -143,7 +143,7 @@ const DataManagement = ({ vmId, hostname }) => {
             )}
 
             <div className="mb-6">
-                <h4 className="flex items-center gap-2 text-lg font-bold text-gray-800 mb-4">
+                <h4 className="flex items-center gap-2 text-lg font-bold text-gray-100 mb-4">
                     <Trash2 size={18} className="text-red-500" />
                     Delete Old Data
                 </h4>
@@ -152,33 +152,33 @@ const DataManagement = ({ vmId, hostname }) => {
                     <button
                         onClick={() => deleteOldData('1d')}
                         disabled={loading}
-                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-red-500/10 border-red-500/30 text-red-2000 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Delete &gt; 1 Day
                     </button>
                     <button
                         onClick={() => deleteOldData('7d')}
                         disabled={loading}
-                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-red-500/10 border-red-500/30 text-red-2000 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Delete &gt; 1 Week
                     </button>
                     <button
                         onClick={() => deleteOldData('30d')}
                         disabled={loading}
-                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-red-500/10 border-red-500/30 text-red-2000 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Delete &gt; 1 Month
                     </button>
                 </div>
             </div>
 
-            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="p-4 glass-panel/5 border border-white/10 rounded-lg">
                 <div className="flex items-center gap-2 mb-2 text-orange-800">
                     <AlertCircle size={18} />
                     <strong className="font-bold">Data Storage Info</strong>
                 </div>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1 ml-1">
+                <ul className="list-disc list-inside text-sm text-gray-200 space-y-1 ml-1">
                     <li>Metrics are collected every 5 seconds by default</li>
                     <li>Data is automatically expired after 30 days (configurable)</li>
                     <li>Use the delete options above to manage storage manually</li>

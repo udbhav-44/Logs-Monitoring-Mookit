@@ -7,17 +7,17 @@ import config from '../config';
 // Memoized VM Card component to prevent unnecessary re-renders
 const VMCard = memo(({ vm }) => {
     return (
-        <Link to={`/metrics/vm/${vm._id}`} state={{ agentUrl: vm.agentUrl }} key={vm._id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow block">
+        <Link to={`/metrics/vm/${vm._id}`} state={{ agentUrl: vm.agentUrl }} key={vm._id} className="glass-card p-6 rounded-lg border border-white/10 hover:shadow-md transition-shadow block">
             <div className="flex items-center gap-4 mb-4">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                <div className="p-2 glass-panel/5 text-blue-600 rounded-lg">
                     <Server size={24} />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900 m-0">{vm.hostname}</h3>
-                    <span className="text-sm text-gray-500">{vm._id}</span>
+                    <h3 className="text-lg font-bold text-white m-0">{vm.hostname}</h3>
+                    <span className="text-sm text-gray-400">{vm._id}</span>
                 </div>
                 <div className="ml-auto">
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${vm.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full${vm.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-400'}`}>
                         {vm.status || 'Unknown'}
                     </span>
                 </div>
@@ -25,20 +25,20 @@ const VMCard = memo(({ vm }) => {
 
             <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-1">CPU</div>
-                    <div className={`font-bold ${vm.cpu?.usage > 80 ? 'text-red-600' : 'text-gray-900'}`}>
+                    <div className="text-xs text-gray-400 mb-1">CPU</div>
+                    <div className={`font-bold${vm.cpu?.usage > 80 ? 'text-red-600' : 'text-white'}`}>
                         {vm.cpu?.usage ? `${vm.cpu.usage.toFixed(1)}%` : 'N/A'}
                     </div>
                 </div>
                 <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-1">Memory</div>
-                    <div className="font-bold text-gray-900">
+                    <div className="text-xs text-gray-400 mb-1">Memory</div>
+                    <div className="font-bold text-white">
                         {vm.memory?.percent ? `${vm.memory.percent.toFixed(1)}%` : 'N/A'}
                     </div>
                 </div>
                 <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-1">Status</div>
-                    <div className={`text-sm font-medium ${vm.status === 'online' ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="text-xs text-gray-400 mb-1">Status</div>
+                    <div className={`text-sm font-medium${vm.status === 'online' ? 'text-green-600' : 'text-red-600'}`}>
                         {vm.status === 'online' ? 'Live' : 'Offline'}
                     </div>
                 </div>
@@ -46,16 +46,16 @@ const VMCard = memo(({ vm }) => {
 
             {/* Detailed System Stats */}
             {vm.status === 'online' && vm.cpu && vm.memory && (
-                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg text-xs">
+                <div className="grid grid-cols-3 gap-3 p-3 glass-panel/5 rounded-lg text-xs">
                     {/* CPU Stats */}
                     <div>
-                        <div className="font-semibold text-gray-700 mb-1">CPU</div>
+                        <div className="font-semibold text-gray-200 mb-1">CPU</div>
                         <div className="flex justify-between mb-0.5">
-                            <span className="text-gray-500">Cores:</span>
-                            <span className="text-gray-900">{vm.cpu?.cores?.length || 0}</span>
+                            <span className="text-gray-400">Cores:</span>
+                            <span className="text-white">{vm.cpu?.cores?.length || 0}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-gray-500">Usage:</span>
+                            <span className="text-gray-400">Usage:</span>
                             <span className={`${vm.cpu?.usage > 80 ? 'text-red-600' : 'text-green-600'}`}>
                                 {vm.cpu?.usage?.toFixed(1)}%
                             </span>
@@ -64,13 +64,13 @@ const VMCard = memo(({ vm }) => {
 
                     {/* Memory Stats */}
                     <div>
-                        <div className="font-semibold text-gray-700 mb-1">Memory</div>
+                        <div className="font-semibold text-gray-200 mb-1">Memory</div>
                         <div className="flex justify-between mb-0.5">
-                            <span className="text-gray-500">Total:</span>
-                            <span className="text-gray-900">{(vm.memory?.total / 1024 / 1024 / 1024).toFixed(1)} GB</span>
+                            <span className="text-gray-400">Total:</span>
+                            <span className="text-white">{(vm.memory?.total / 1024 / 1024 / 1024).toFixed(1)} GB</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-gray-500">Used:</span>
+                            <span className="text-gray-400">Used:</span>
                             <span className={`${vm.memory?.percent > 80 ? 'text-red-600' : 'text-green-600'}`}>
                                 {(vm.memory?.used / 1024 / 1024 / 1024).toFixed(1)} GB
                             </span>
@@ -79,13 +79,13 @@ const VMCard = memo(({ vm }) => {
 
                     {/* Disk Stats */}
                     <div>
-                        <div className="font-semibold text-gray-700 mb-1">Disk</div>
+                        <div className="font-semibold text-gray-200 mb-1">Disk</div>
                         <div className="flex justify-between mb-0.5">
-                            <span className="text-gray-500">Total:</span>
-                            <span className="text-gray-900">{vm.disk ? (vm.disk.total / 1024 / 1024 / 1024).toFixed(1) : '0'} GB</span>
+                            <span className="text-gray-400">Total:</span>
+                            <span className="text-white">{vm.disk ? (vm.disk.total / 1024 / 1024 / 1024).toFixed(1) : '0'} GB</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-gray-500">Used:</span>
+                            <span className="text-gray-400">Used:</span>
                             <span className={`${vm.disk?.percent > 80 ? 'text-red-600' : 'text-green-600'}`}>
                                 {vm.disk ? (vm.disk.used / 1024 / 1024 / 1024).toFixed(1) : '0'} GB
                             </span>
@@ -96,7 +96,7 @@ const VMCard = memo(({ vm }) => {
 
             {/* Offline message */}
             {vm.status === 'offline' && (
-                <div className="p-3 bg-red-50 rounded-lg text-xs text-red-600 text-center font-medium">
+                <div className="p-3 glass-panel/5 rounded-lg text-xs text-red-600 text-center font-medium">
                     Agent offline - Click to view historical data
                 </div>
             )}
@@ -286,27 +286,27 @@ const Dashboard = () => {
 
     if (isInitialLoad) return (
         <div className="text-center mt-16">
-            <Activity className="w-12 h-12 text-indigo-600 mx-auto mb-4 animate-spin" />
-            <h2 className="text-xl font-bold text-gray-900">Loading Infrastructure...</h2>
-            <p className="text-gray-500 mt-2">Discovering agents and establishing connections...</p>
+            <Activity className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
+            <h2 className="text-xl font-bold text-white">Loading Infrastructure...</h2>
+            <p className="text-gray-400 mt-2">Discovering agents and establishing connections...</p>
         </div>
     );
 
     if (vmList.length === 0) return (
-        <div className="text-center mt-16 p-8 bg-white border border-gray-200 rounded-lg shadow-sm max-w-lg mx-auto">
-            <h2 className="text-xl font-bold text-gray-900">No Agents Found</h2>
-            <p className="text-gray-500 mt-2">Please ensure the Monitoring Agent is running and registered with the Server.</p>
+        <div className="text-center mt-16 p-8 glass-card border border-white/10 rounded-lg max-w-lg mx-auto">
+            <h2 className="text-xl font-bold text-white">No Agents Found</h2>
+            <p className="text-gray-400 mt-2">Please ensure the Monitoring Agent is running and registered with the Server.</p>
         </div>
     );
 
     return (
         <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Infrastructure Overview</h1>
+                <h1 className="text-2xl font-bold text-white">Infrastructure Overview</h1>
                 <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">{onlineCount} Online</span>
-                    <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">{vmList.length - onlineCount} Offline</span>
-                    <span className="text-sm text-gray-500 ml-2">Total: {vmList.length}</span>
+                    <span className="px-3 py-1 glass-panel/10 text-green-800 rounded-full text-sm font-semibold">{onlineCount} Online</span>
+                    <span className="px-3 py-1 glass-panel/10 text-red-400 rounded-full text-sm font-semibold">{vmList.length - onlineCount} Offline</span>
+                    <span className="text-sm text-gray-400 ml-2">Total: {vmList.length}</span>
                 </div>
             </div>
 

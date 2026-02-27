@@ -14,8 +14,8 @@ import AlertRulesConfig from './monitoringsys/components/AlertRulesConfig';
 const Placeholder = ({ title }) => (
   <div>
     <h1 className="text-2xl font-bold mb-4">{title}</h1>
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <p className="text-gray-500">Component under construction.</p>
+    <div className="glass-card p-6 rounded-lg border border-white/10">
+      <p className="text-gray-400">Component under construction.</p>
     </div>
   </div>
 );

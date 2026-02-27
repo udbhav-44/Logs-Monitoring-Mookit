@@ -23,25 +23,25 @@ const ConnectionStatus = ({ agentUrl, vmId, agentStatus }) => {
     }, []);
 
     return (
-        <div className="flex items-center gap-4 px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-4 px-4 py-2 glass-card rounded-lg border border-white/10">
             <div className="flex items-center gap-2">
                 <Activity size={14} className={agentStatus === 'connected' ? 'text-green-500' : 'text-red-500'} />
-                <span className="text-xs font-medium text-gray-500">
+                <span className="text-xs font-medium text-gray-400">
                     Real-time:
                 </span>
-                <span className={`text-xs font-bold tracking-wide ${agentStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-xs font-bold tracking-wide${agentStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
                     {agentStatus === 'connected' ? 'LIVE' : 'OFFLINE'}
                 </span>
             </div>
 
-            <div className="w-px h-5 bg-gray-200" />
+            <div className="w-px h-5 glass-panel/15" />
 
             <div className="flex items-center gap-2">
                 <Server size={14} className={serverStatus === 'connected' ? 'text-green-500' : serverStatus === 'checking' ? 'text-gray-400' : 'text-red-500'} />
-                <span className="text-xs font-medium text-gray-500">
+                <span className="text-xs font-medium text-gray-400">
                     Storage:
                 </span>
-                <span className={`text-xs font-bold tracking-wide ${serverStatus === 'connected' ? 'text-green-600' : serverStatus === 'checking' ? 'text-gray-500' : 'text-red-600'}`}>
+                <span className={`text-xs font-bold tracking-wide${serverStatus === 'connected' ? 'text-green-600' : serverStatus === 'checking' ? 'text-gray-400' : 'text-red-600'}`}>
                     {serverStatus === 'connected' ? 'ONLINE' : serverStatus === 'checking' ? 'CHECKING' : 'OFFLINE'}
                 </span>
             </div>

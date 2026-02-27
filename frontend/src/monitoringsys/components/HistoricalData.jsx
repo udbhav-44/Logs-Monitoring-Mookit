@@ -194,7 +194,7 @@ const HistoricalData = ({ vmId, hostname }) => {
 
     if (loading) {
         return (
-            <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center text-gray-500">
+            <div className="glass-card p-12 rounded-lg border border-white/10 text-center text-gray-400">
                 Loading historical data...
             </div>
         );
@@ -347,15 +347,15 @@ const HistoricalData = ({ vmId, hostname }) => {
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6 mt-4">
+        <div className="glass-card p-6 rounded-lg border border-white/10 mb-6 mt-4">
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <div>
-                    <h3 className="flex items-center gap-2 m-0 text-lg font-bold text-gray-900 mb-1">
-                        <TrendingUp size={20} className="text-indigo-600" />
+                    <h3 className="flex items-center gap-2 m-0 text-lg font-bold text-white mb-1">
+                        <TrendingUp size={20} className="text-blue-600" />
                         Historical Data - {hostname}
                     </h3>
                     {selectedPeriod === 'custom' && customRangeLabel && (
-                        <div className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                        <div className="text-xs text-gray-400 flex items-center gap-1 font-medium">
                             <Calendar size={12} />
                             {customRangeLabel}
                         </div>
@@ -366,7 +366,7 @@ const HistoricalData = ({ vmId, hostname }) => {
                     <select
                         value={selectedPeriod}
                         onChange={(e) => handlePeriodChange(e.target.value)}
-                        className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        className="block w-40 rounded-md border-white/10 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     >
                         <option value="1h">Last Hour</option>
                         <option value="6h">Last 6 Hours</option>
@@ -378,7 +378,7 @@ const HistoricalData = ({ vmId, hostname }) => {
 
                     {/* Refresh indicator */}
                     {isRefreshing && selectedPeriod !== 'custom' && (
-                        <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                        <div className="flex items-center gap-2 text-sm text-gray-400 font-medium">
                             <RefreshCw size={14} className="text-green-600 animate-spin" />
                             Updating...
                         </div>
@@ -387,10 +387,7 @@ const HistoricalData = ({ vmId, hostname }) => {
                     <button
                         onClick={exportData}
                         disabled={historicalData.length === 0}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${historicalData.length === 0
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border outline-none border-gray-200'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer pointer-events-auto'
-                            }`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500${historicalData.length === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed border outline-none border-white/10' : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer pointer-events-auto' }`}
                     >
                         <Download size={16} />
                         Export CSV
@@ -399,10 +396,10 @@ const HistoricalData = ({ vmId, hostname }) => {
             </div>
 
             {historicalData.length === 0 ? (
-                <div className="h-96 mb-4 flex items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                    <div className="text-center text-gray-500">
+                <div className="h-96 mb-4 flex items-center justify-center glass-panel/5 rounded-lg border border-dashed border-white/10">
+                    <div className="text-center text-gray-400">
                         <TrendingUp size={48} className="opacity-30 mb-4 mx-auto text-gray-400" />
-                        <div className="text-lg font-medium mb-1 text-gray-900">No historical data available for the selected period</div>
+                        <div className="text-lg font-medium mb-1 text-white">No historical data available for the selected period</div>
                         <div className="text-sm">Try selecting a different time range above</div>
                     </div>
                 </div>
@@ -413,25 +410,25 @@ const HistoricalData = ({ vmId, hostname }) => {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                        <div className="text-center p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-                            <div className="text-xs text-indigo-700 font-semibold uppercase tracking-wider mb-1">Avg CPU</div>
-                            <div className="font-bold text-2xl text-indigo-900">
+                        <div className="text-center p-4 glass-panel/5 rounded-lg border border-white/10">
+                            <div className="text-xs text-blue-700 font-semibold uppercase tracking-wider mb-1">Avg CPU</div>
+                            <div className="font-bold text-2xl text-blue-900">
                                 {(historicalData.reduce((sum, item) => sum + item.cpu.usage, 0) / historicalData.length).toFixed(1)}%
                             </div>
                         </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-100">
-                            <div className="text-xs text-purple-700 font-semibold uppercase tracking-wider mb-1">Avg Memory</div>
-                            <div className="font-bold text-2xl text-purple-900">
+                        <div className="text-center p-4 glass-panel/5 rounded-lg border border-white/10">
+                            <div className="text-xs text-cyan-700 font-semibold uppercase tracking-wider mb-1">Avg Memory</div>
+                            <div className="font-bold text-2xl text-cyan-900">
                                 {(historicalData.reduce((sum, item) => sum + item.memory.percent, 0) / historicalData.length).toFixed(1)}%
                             </div>
                         </div>
-                        <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
+                        <div className="text-center p-4 glass-panel/5 rounded-lg border border-white/10">
                             <div className="text-xs text-green-700 font-semibold uppercase tracking-wider mb-1">Total Points</div>
                             <div className="font-bold text-2xl text-green-900">
                                 {historicalData.length.toLocaleString()}
                             </div>
                         </div>
-                        <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-100">
+                        <div className="text-center p-4 glass-panel/5 rounded-lg border border-white/10">
                             <div className="text-xs text-amber-700 font-semibold uppercase tracking-wider mb-1">Displayed</div>
                             <div className="font-bold text-2xl text-amber-900">
                                 {displayData.length.toLocaleString()}
@@ -444,10 +441,10 @@ const HistoricalData = ({ vmId, hostname }) => {
             {/* Custom Date Range Modal */}
             {showCustomRange && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 min-w-[400px] border border-gray-200">
+                    <div className="glass-card rounded-xl p-8 min-w-[400px] border border-white/10">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="m-0 flex items-center gap-2 text-lg font-bold text-gray-900">
-                                <Calendar size={20} className="text-indigo-600" />
+                            <h3 className="m-0 flex items-center gap-2 text-lg font-bold text-white">
+                                <Calendar size={20} className="text-blue-600" />
                                 Select Custom Date Range
                             </h3>
                             <button
@@ -455,7 +452,7 @@ const HistoricalData = ({ vmId, hostname }) => {
                                     setShowCustomRange(false);
                                     setSelectedPeriod('1h');
                                 }}
-                                className="bg-transparent border-none text-gray-500 hover:text-gray-900 text-2xl cursor-pointer"
+                                className="bg-transparent border-none text-gray-400 hover:text-white text-2xl cursor-pointer"
                                 aria-label="Close custom range selector"
                             >
                                 ✕
@@ -463,26 +460,26 @@ const HistoricalData = ({ vmId, hostname }) => {
                         </div>
 
                         <div className="mb-6">
-                            <label className="block mb-2 text-sm font-medium text-gray-700">
+                            <label className="block mb-2 text-sm font-medium text-gray-200">
                                 Start Date & Time
                             </label>
                             <input
                                 type="datetime-local"
                                 value={customStartDate}
                                 onChange={(e) => setCustomStartDate(e.target.value)}
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 text-base focus:border-indigo-500 focus:ring-indigo-500"
+                                className="w-full p-3 rounded-lg border border-white/10 glass-panel/5 text-white text-base focus:border-blue-500 focus:ring-blue-500"
                             />
                         </div>
 
                         <div className="mb-6">
-                            <label className="block mb-2 text-sm font-medium text-gray-700">
+                            <label className="block mb-2 text-sm font-medium text-gray-200">
                                 End Date & Time
                             </label>
                             <input
                                 type="datetime-local"
                                 value={customEndDate}
                                 onChange={(e) => setCustomEndDate(e.target.value)}
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 text-base focus:border-indigo-500 focus:ring-indigo-500"
+                                className="w-full p-3 rounded-lg border border-white/10 glass-panel/5 text-white text-base focus:border-blue-500 focus:ring-blue-500"
                             />
                         </div>
 
@@ -492,14 +489,14 @@ const HistoricalData = ({ vmId, hostname }) => {
                                     setShowCustomRange(false);
                                     setSelectedPeriod('1h');
                                 }}
-                                className="px-6 py-3 rounded-lg border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium cursor-pointer transition-colors"
+                                className="px-6 py-3 rounded-lg border border-white/10 glass-panel/5 hover:bg-gray-100 text-gray-200 font-medium cursor-pointer transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleCustomRangeApply}
                                 disabled={!customStartDate || !customEndDate}
-                                className={`px-6 py-3 rounded-lg border-none font-bold text-white transition-colors ${customStartDate && customEndDate ? 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer' : 'bg-gray-300 cursor-not-allowed'}`}
+                                className={`px-6 py-3 rounded-lg border-none font-bold text-white transition-colors${customStartDate && customEndDate ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer' : 'bg-gray-300 cursor-not-allowed'}`}
                             >
                                 Apply Range
                             </button>
@@ -511,23 +508,23 @@ const HistoricalData = ({ vmId, hostname }) => {
             {/* Data Point Detail Modal */}
             {selectedDataPoint && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 max-w-4xl w-[90%] max-h-[85vh] overflow-y-auto border border-gray-200 shadow-xl scrollbar-thin scrollbar-thumb-gray-300">
-                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-                            <h3 className="m-0 text-xl font-bold text-gray-900">Detailed Metrics</h3>
+                    <div className="glass-card rounded-xl p-8 max-w-4xl w-[90%] max-h-[85vh] overflow-y-auto border border-white/10 scrollbar-thin scrollbar-thumb-gray-300">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                            <h3 className="m-0 text-xl font-bold text-white">Detailed Metrics</h3>
                             <button
                                 onClick={() => setSelectedDataPoint(null)}
-                                className="bg-transparent border-none text-gray-500 hover:text-gray-900 text-2xl cursor-pointer"
+                                className="bg-transparent border-none text-gray-400 hover:text-white text-2xl cursor-pointer"
                                 aria-label="Close detailed metrics"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
-                            <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                        <div className="mb-6 p-4 glass-panel/5 rounded-lg flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
+                            <div className="text-sm font-medium text-gray-400 uppercase tracking-wide">
                                 Timestamp
                             </div>
-                            <div className="font-bold text-indigo-700 text-lg">
+                            <div className="font-bold text-blue-700 text-lg">
                                 {new Date(selectedDataPoint.timestamp).toLocaleString('en-IN', {
                                     timeZone: 'Asia/Kolkata'
                                 })}
@@ -535,24 +532,24 @@ const HistoricalData = ({ vmId, hostname }) => {
                         </div>
 
                         {/* CPU Details */}
-                        <div className="mb-6 p-5 bg-indigo-50/50 border border-indigo-100 rounded-lg">
-                            <h4 className="m-0 mb-4 text-lg font-bold text-indigo-700 flex items-center gap-2">
+                        <div className="mb-6 p-5 bg-blue-50/50 border border-white/10 rounded-lg">
+                            <h4 className="m-0 mb-4 text-lg font-bold text-blue-700 flex items-center gap-2">
                                 <Activity size={18} /> CPU
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div>
-                                    <div className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">Overall Usage</div>
-                                    <div className="text-2xl font-bold text-indigo-900">{selectedDataPoint.cpu.usage.toFixed(1)}%</div>
+                                    <div className="text-xs font-semibold text-blue-500 uppercase tracking-wide">Overall Usage</div>
+                                    <div className="text-2xl font-bold text-blue-900">{selectedDataPoint.cpu.usage.toFixed(1)}%</div>
                                 </div>
                             </div>
 
                             <div>
-                                <div className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-3">Per-Core Usage ({selectedDataPoint.cpu.cores.length} cores)</div>
+                                <div className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-3">Per-Core Usage ({selectedDataPoint.cpu.cores.length} cores)</div>
                                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                                     {selectedDataPoint.cpu.cores.map((coreUsage, idx) => (
-                                        <div key={idx} className="p-2 bg-white border border-indigo-100 rounded-md text-center shadow-sm">
-                                            <div className="text-[0.65rem] font-medium text-gray-500 mb-1">C {idx}</div>
-                                            <div className={`text-sm font-bold ${coreUsage > 50 ? 'text-red-500' : 'text-green-600'}`}>
+                                        <div key={idx} className="p-2 glass-card border border-white/10 rounded-md text-center">
+                                            <div className="text-[0.65rem] font-medium text-gray-400 mb-1">C {idx}</div>
+                                            <div className={`text-sm font-bold${coreUsage > 50 ? 'text-red-500' : 'text-green-600'}`}>
                                                 {coreUsage.toFixed(0)}%
                                             </div>
                                         </div>
@@ -562,25 +559,25 @@ const HistoricalData = ({ vmId, hostname }) => {
                         </div>
 
                         {/* Memory Details */}
-                        <div className="mb-6 p-5 bg-purple-50/50 border border-purple-100 rounded-lg">
-                            <h4 className="m-0 mb-4 text-lg font-bold text-purple-700 flex items-center gap-2">
+                        <div className="mb-6 p-5 bg-cyan-50/50 border border-white/10 rounded-lg">
+                            <h4 className="m-0 mb-4 text-lg font-bold text-cyan-700 flex items-center gap-2">
                                 <Database size={18} /> Memory
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <div className="bg-white p-3 rounded-md border border-purple-100 shadow-sm">
-                                    <div className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Total</div>
-                                    <div className="text-lg font-bold text-purple-900">{(selectedDataPoint.memory.total / 1024 / 1024 / 1024).toFixed(2)} GB</div>
+                                <div className="glass-card p-3 rounded-md border border-white/10">
+                                    <div className="text-xs font-semibold text-cyan-500 uppercase tracking-wide">Total</div>
+                                    <div className="text-lg font-bold text-cyan-900">{(selectedDataPoint.memory.total / 1024 / 1024 / 1024).toFixed(2)} GB</div>
                                 </div>
-                                <div className="bg-white p-3 rounded-md border border-purple-100 shadow-sm">
-                                    <div className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Used</div>
-                                    <div className="text-lg font-bold text-purple-900">{(selectedDataPoint.memory.used / 1024 / 1024 / 1024).toFixed(2)} GB</div>
+                                <div className="glass-card p-3 rounded-md border border-white/10">
+                                    <div className="text-xs font-semibold text-cyan-500 uppercase tracking-wide">Used</div>
+                                    <div className="text-lg font-bold text-cyan-900">{(selectedDataPoint.memory.used / 1024 / 1024 / 1024).toFixed(2)} GB</div>
                                 </div>
-                                <div className="bg-white p-3 rounded-md border border-purple-100 shadow-sm">
-                                    <div className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Percent</div>
+                                <div className="glass-card p-3 rounded-md border border-white/10">
+                                    <div className="text-xs font-semibold text-cyan-500 uppercase tracking-wide">Percent</div>
                                     <div className="flex items-center gap-2">
-                                        <div className={`text-lg font-bold ${selectedDataPoint.memory.percent > 80 ? 'text-red-500' : 'text-purple-900'}`}>{selectedDataPoint.memory.percent.toFixed(1)}%</div>
-                                        <div className="flex-1 h-2 bg-purple-100 rounded-full overflow-hidden hidden sm:block">
-                                            <div className={`h-full ${selectedDataPoint.memory.percent > 80 ? 'bg-red-500' : 'bg-purple-500'}`} style={{ width: `${selectedDataPoint.memory.percent}%` }}></div>
+                                        <div className={`text-lg font-bold${selectedDataPoint.memory.percent > 80 ? 'text-red-500' : 'text-cyan-900'}`}>{selectedDataPoint.memory.percent.toFixed(1)}%</div>
+                                        <div className="flex-1 h-2 glass-panel/10 rounded-full overflow-hidden hidden sm:block">
+                                            <div className={`h-full${selectedDataPoint.memory.percent > 80 ? 'bg-red-500/10 border-red-500/30 text-red-2000' : 'bg-cyan-500'}`} style={{ width: `${selectedDataPoint.memory.percent}%` }}></div>
                                         </div>
                                     </div>
                                 </div>
@@ -589,25 +586,25 @@ const HistoricalData = ({ vmId, hostname }) => {
 
                         {/* Disk Details */}
                         {selectedDataPoint.disk && (
-                            <div className="mb-6 p-5 bg-green-50/50 border border-green-100 rounded-lg">
+                            <div className="mb-6 p-5 bg-green-50/50 border border-white/10 rounded-lg">
                                 <h4 className="m-0 mb-4 text-lg font-bold text-green-700 flex items-center gap-2">
                                     <Server size={18} /> Disk
                                 </h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                    <div className="bg-white p-3 rounded-md border border-green-100 shadow-sm">
+                                    <div className="glass-card p-3 rounded-md border border-white/10">
                                         <div className="text-xs font-semibold text-green-500 uppercase tracking-wide">Total</div>
                                         <div className="text-lg font-bold text-green-900">{(selectedDataPoint.disk.total / 1024 / 1024 / 1024).toFixed(2)} GB</div>
                                     </div>
-                                    <div className="bg-white p-3 rounded-md border border-green-100 shadow-sm">
+                                    <div className="glass-card p-3 rounded-md border border-white/10">
                                         <div className="text-xs font-semibold text-green-500 uppercase tracking-wide">Used</div>
                                         <div className="text-lg font-bold text-green-900">{(selectedDataPoint.disk.used / 1024 / 1024 / 1024).toFixed(2)} GB</div>
                                     </div>
-                                    <div className="bg-white p-3 rounded-md border border-green-100 shadow-sm">
+                                    <div className="glass-card p-3 rounded-md border border-white/10">
                                         <div className="text-xs font-semibold text-green-500 uppercase tracking-wide">Percent</div>
                                         <div className="flex items-center gap-2">
-                                            <div className={`text-lg font-bold ${selectedDataPoint.disk.percent > 80 ? 'text-red-500' : 'text-green-900'}`}>{selectedDataPoint.disk.percent.toFixed(1)}%</div>
-                                            <div className="flex-1 h-2 bg-green-100 rounded-full overflow-hidden hidden sm:block">
-                                                <div className={`h-full ${selectedDataPoint.disk.percent > 80 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${selectedDataPoint.disk.percent}%` }}></div>
+                                            <div className={`text-lg font-bold${selectedDataPoint.disk.percent > 80 ? 'text-red-500' : 'text-green-900'}`}>{selectedDataPoint.disk.percent.toFixed(1)}%</div>
+                                            <div className="flex-1 h-2 glass-panel/10 rounded-full overflow-hidden hidden sm:block">
+                                                <div className={`h-full${selectedDataPoint.disk.percent > 80 ? 'bg-red-500/10 border-red-500/30 text-red-2000' : 'bg-green-500'}`} style={{ width: `${selectedDataPoint.disk.percent}%` }}></div>
                                             </div>
                                         </div>
                                     </div>
@@ -617,7 +614,7 @@ const HistoricalData = ({ vmId, hostname }) => {
 
                         {/* Top 5 CPU Processes */}
                         {selectedDataPoint.processes && (
-                            <div className="mb-6 p-5 bg-orange-50/50 border border-orange-100 rounded-lg">
+                            <div className="mb-6 p-5 bg-orange-50/50 border border-white/10 rounded-lg">
                                 <h4 className="m-0 mb-4 text-lg font-bold text-orange-700 flex items-center gap-2">
                                     <Activity size={18} /> Top 5 CPU Processes
                                 </h4>
@@ -650,7 +647,7 @@ const HistoricalData = ({ vmId, hostname }) => {
 
                                     if (topProcesses.length === 0) {
                                         return (
-                                            <div className="text-center p-4 text-gray-500 font-medium bg-white rounded-lg border border-orange-100">
+                                            <div className="text-center p-4 text-gray-400 font-medium glass-card rounded-lg border border-white/10">
                                                 No process data available
                                             </div>
                                         );
@@ -659,31 +656,31 @@ const HistoricalData = ({ vmId, hostname }) => {
                                     return (
                                         <div className="flex flex-col gap-2">
                                             {topProcesses.map((process, idx) => (
-                                                <div key={idx} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 sm:p-4 bg-white border border-orange-100 rounded-lg shadow-sm gap-3 sm:gap-0">
+                                                <div key={idx} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 sm:p-4 glass-card border border-white/10 rounded-lg gap-3 sm:gap-0">
                                                     <div className="flex items-center gap-3">
-                                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ${idx === 0 ? 'bg-red-500' : idx === 1 ? 'bg-orange-400' : 'bg-orange-300'}`}>
+                                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm${idx === 0 ? 'bg-red-500/10 border-red-500/30 text-red-2000' : idx === 1 ? 'bg-orange-400' : 'bg-orange-300'}`}>
                                                             {idx + 1}
                                                         </span>
-                                                        <span className="font-bold text-gray-800 break-all sm:break-normal">
+                                                        <span className="font-bold text-gray-100 break-all sm:break-normal">
                                                             {process.name || 'Unknown'}
                                                         </span>
                                                     </div>
-                                                    <div className="flex flex-wrap sm:flex-nowrap gap-4 sm:gap-6 items-center bg-gray-50 sm:bg-transparent p-2 sm:p-0 rounded-md sm:rounded-none">
+                                                    <div className="flex flex-wrap sm:flex-nowrap gap-4 sm:gap-6 items-center glass-panel/5 sm:bg-transparent p-2 sm:p-0 rounded-md sm:rounded-none">
                                                         <div className="flex-1 sm:flex-none text-left sm:text-right">
-                                                            <div className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">CPU</div>
+                                                            <div className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest">CPU</div>
                                                             <div className="font-bold text-orange-600 text-sm">
                                                                 {(process.cpu || 0).toFixed(1)}%
                                                             </div>
                                                         </div>
-                                                        <div className="flex-1 sm:flex-none text-left sm:text-right border-l sm:border-none border-gray-200 pl-4 sm:pl-0">
-                                                            <div className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">Memory</div>
-                                                            <div className="font-bold text-purple-600 text-sm">
+                                                        <div className="flex-1 sm:flex-none text-left sm:text-right border-l sm:border-none border-white/10 pl-4 sm:pl-0">
+                                                            <div className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest">Memory</div>
+                                                            <div className="font-bold text-cyan-600 text-sm">
                                                                 {(process.memory || 0).toFixed(1)}%
                                                             </div>
                                                         </div>
-                                                        <div className="flex-1 sm:flex-none text-left sm:text-right border-l sm:border-none border-gray-200 pl-4 sm:pl-0 min-w-[60px]">
-                                                            <div className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">PID</div>
-                                                            <div className="font-medium text-gray-600 text-sm">
+                                                        <div className="flex-1 sm:flex-none text-left sm:text-right border-l sm:border-none border-white/10 pl-4 sm:pl-0 min-w-[60px]">
+                                                            <div className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest">PID</div>
+                                                            <div className="font-medium text-gray-300 text-sm">
                                                                 {process.pid || 'N/A'}
                                                             </div>
                                                         </div>
@@ -698,8 +695,8 @@ const HistoricalData = ({ vmId, hostname }) => {
 
                         {/* Services Status */}
                         {selectedDataPoint.services && Object.keys(selectedDataPoint.services).length > 0 && (
-                            <div className="p-5 bg-gray-50 border border-gray-200 rounded-lg">
-                                <h4 className="text-lg font-bold text-gray-700 m-0 mb-4 flex items-center gap-2">
+                            <div className="p-5 glass-panel/5 border border-white/10 rounded-lg">
+                                <h4 className="text-lg font-bold text-gray-200 m-0 mb-4 flex items-center gap-2">
                                     <Server size={20} /> Services
                                 </h4>
                                 <div className="flex flex-col gap-3">
@@ -711,30 +708,30 @@ const HistoricalData = ({ vmId, hostname }) => {
                                             switch (state) {
                                                 case 'healthy': return 'bg-green-100 text-green-800 border-green-200';
                                                 case 'degraded': return 'bg-orange-100 text-orange-800 border-orange-200';
-                                                case 'down': return 'bg-red-100 text-red-800 border-red-200';
-                                                case 'unknown': return 'bg-gray-100 text-gray-800 border-gray-200';
+                                                case 'down': return 'bg-red-100 text-red-400 border-red-200';
+                                                case 'unknown': return 'bg-gray-100 text-gray-200 border-white/10';
                                                 case 'running': return 'bg-green-100 text-green-800 border-green-200';
-                                                case 'stopped': return 'bg-red-100 text-red-800 border-red-200';
-                                                default: return 'bg-gray-100 text-gray-800 border-gray-200';
+                                                case 'stopped': return 'bg-red-100 text-red-400 border-red-200';
+                                                default: return 'bg-gray-100 text-gray-200 border-white/10';
                                             }
                                         };
 
                                         const colorClasses = getStateColor(state);
 
                                         return (
-                                            <div key={service} className="p-4 bg-white border border-gray-100 rounded-lg shadow-sm">
+                                            <div key={service} className="p-4 glass-card border border-white/10 rounded-lg">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="font-semibold text-gray-900">{service}</span>
-                                                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${colorClasses}`}>
+                                                    <span className="font-semibold text-white">{service}</span>
+                                                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full border${colorClasses}`}>
                                                         {state.charAt(0).toUpperCase() + state.slice(1)}
                                                     </span>
                                                 </div>
                                                 {checks && (
-                                                    <div className="mt-3 pl-2 border-l-2 border-gray-200 space-y-2">
+                                                    <div className="mt-3 pl-2 border-l-2 border-white/10 space-y-2">
                                                         {Object.entries(checks).map(([checkName, checkResult]) => (
                                                             <div key={checkName} className="flex items-center gap-2 text-sm">
-                                                                <span className={`w-2 h-2 rounded-full ${checkResult.passed ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                                                <span className="text-gray-600 font-medium capitalize">{checkName}:</span>
+                                                                <span className={`w-2 h-2 rounded-full${checkResult.passed ? 'bg-green-500' : 'bg-red-500/10 border-red-500/30 text-red-2000'}`}></span>
+                                                                <span className="text-gray-300 font-medium capitalize">{checkName}:</span>
                                                                 <span className={checkResult.passed ? 'text-green-600' : 'text-red-500'}>
                                                                     {checkResult.message || (checkResult.passed ? 'OK' : 'Failed')}
                                                                 </span>

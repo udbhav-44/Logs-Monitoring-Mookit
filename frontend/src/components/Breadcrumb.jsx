@@ -22,10 +22,10 @@ const Breadcrumb = () => {
     }
 
     return (
-        <nav className="flex items-center text-sm font-medium text-gray-500 mb-6" aria-label="Breadcrumb">
+        <nav className="flex items-center text-sm font-medium text-gray-400 mb-6" aria-label="Breadcrumb">
             <Link
                 to="/"
-                className="flex items-center hover:text-indigo-400 transition-colors"
+                className="flex items-center hover:text-blue-400 transition-colors"
             >
                 <Home className="w-4 h-4 mr-1" />
                 Overview
@@ -47,7 +47,7 @@ const Breadcrumb = () => {
                                 {label}
                             </span>
                         ) : (
-                            <Link to={to} className="hover:text-indigo-400 transition-colors">
+                            <Link to={to} className="hover:text-blue-400 transition-colors">
                                 {label}
                             </Link>
                         )}

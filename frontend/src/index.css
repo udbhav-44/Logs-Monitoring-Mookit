@@ -3,7 +3,12 @@
 @layer base {
   body {
     @apply text-white;
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    background-color: #020617;
+    /* Very dark slate, almost black */
+    background-image:
+      radial-gradient(circle at 0% 0%, rgba(2, 132, 199, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 100% 0%, rgba(6, 182, 212, 0.2) 0%, transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(3, 105, 161, 0.25) 0%, transparent 50%);
     background-attachment: fixed;
     min-height: 100vh;
     color-scheme: dark;
@@ -34,6 +39,14 @@
 }
 
 @layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-[16px] border border-white/10 shadow-2xl;
+  }
+
+  .glass-card {
+    @apply bg-white/[0.03] backdrop-blur-[12px] border border-white/10 shadow-lg shadow-black/30 transition-all duration-300 rounded-xl hover:bg-white/[0.06] hover:border-white/20;
+  }
+
   .stat-card {
     @apply transition-all duration-200;
     opacity: 0;
@@ -44,31 +57,28 @@
     opacity: 0;
     transform: translateX(-10px);
   }
-
-  .glass-card {
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0.75rem;
-  }
 }
 
 @layer utilities {
   .animation-delay-300 {
     animation-delay: 300ms;
   }
+
   .animation-delay-500 {
     animation-delay: 500ms;
   }
+
   .animation-delay-700 {
     animation-delay: 700ms;
   }
+
   .animation-delay-1000 {
     animation-delay: 1000ms;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   ::before,
   ::after {
@@ -81,8 +91,15 @@
 
 /* Login right-panel entrance */
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(32px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .login-card-enter {
@@ -91,8 +108,15 @@
 
 /* Feature bullet stagger fade-up */
 @keyframes bulletFadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .feature-bullet {
@@ -102,29 +126,79 @@
 
 /* Terminal log-line sequential fade */
 @keyframes logFade {
-  0%, 100% { opacity: 0; }
-  10%, 85%  { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  10%,
+  85% {
+    opacity: 1;
+  }
 }
 
-.log-line-1 { animation: logFade 4s ease-in-out 0s infinite; }
-.log-line-2 { animation: logFade 4s ease-in-out 0.8s infinite; }
-.log-line-3 { animation: logFade 4s ease-in-out 1.6s infinite; }
-.log-line-4 { animation: logFade 4s ease-in-out 2.4s infinite; }
-.log-line-5 { animation: logFade 4s ease-in-out 3.2s infinite; }
+.log-line-1 {
+  animation: logFade 4s ease-in-out 0s infinite;
+}
+
+.log-line-2 {
+  animation: logFade 4s ease-in-out 0.8s infinite;
+}
+
+.log-line-3 {
+  animation: logFade 4s ease-in-out 1.6s infinite;
+}
+
+.log-line-4 {
+  animation: logFade 4s ease-in-out 2.4s infinite;
+}
+
+.log-line-5 {
+  animation: logFade 4s ease-in-out 3.2s infinite;
+}
 
 /* Left-panel orb animations */
 @keyframes float-slow {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(20px, -15px) scale(1.05); }
-  66%       { transform: translate(-10px, 10px) scale(0.97); }
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(20px, -15px) scale(1.05);
+  }
+
+  66% {
+    transform: translate(-10px, 10px) scale(0.97);
+  }
 }
 
 @keyframes float-slower {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  40%       { transform: translate(-25px, 20px) scale(1.08); }
-  75%       { transform: translate(15px, -10px) scale(0.95); }
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  40% {
+    transform: translate(-25px, 20px) scale(1.08);
+  }
+
+  75% {
+    transform: translate(15px, -10px) scale(0.95);
+  }
 }
 
-.orb-1 { animation: float-slow 9s ease-in-out infinite; }
-.orb-2 { animation: float-slower 12s ease-in-out infinite; }
-.orb-3 { animation: float-slow 7s ease-in-out infinite reverse; }
+.orb-1 {
+  animation: float-slow 9s ease-in-out infinite;
+}
+
+.orb-2 {
+  animation: float-slower 12s ease-in-out infinite;
+}
+
+.orb-3 {
+  animation: float-slow 7s ease-in-out infinite reverse;
+}

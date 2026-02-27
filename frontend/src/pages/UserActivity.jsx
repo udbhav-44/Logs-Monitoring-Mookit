@@ -140,13 +140,13 @@ const UserActivity = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">User Activity Tracker</h1>
-          <p className="text-gray-500">Answer “did this user perform the action?” with a chronological trail.</p>
+          <h1 className="text-2xl font-bold text-gray-100">User Activity Tracker</h1>
+          <p className="text-gray-400">Answer “did this user perform the action?” with a chronological trail.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+        <div className="glass-card p-6 rounded-xl border border-white/10 space-y-4">
           <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end">
             <div className="relative">
               <User className="absolute left-3 top-3 text-gray-400" size={18} />
@@ -154,11 +154,11 @@ const UserActivity = () => {
                 value={uid}
                 onChange={(e) => setUid(e.target.value)}
                 placeholder="Enter User ID (UID) to trace"
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-500">Timeframe</label>
+              <label className="text-xs text-gray-400">Timeframe</label>
               <select
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
@@ -169,7 +169,7 @@ const UserActivity = () => {
                 ))}
               </select>
             </div>
-            <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 flex items-center gap-2">
+            <button type="submit" className="glass-button text-white px-6 py-2 rounded-lg font-medium hover:glass-panel/20 flex items-center gap-2">
               <Search size={18} />
               Trace
             </button>
@@ -177,7 +177,7 @@ const UserActivity = () => {
           {timeframe === 'custom' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-500">Start (local time)</label>
+                <label className="text-xs text-gray-400">Start (local time)</label>
                 <input
                   type="datetime-local"
                   value={customStart}
@@ -186,7 +186,7 @@ const UserActivity = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500">End (local time)</label>
+                <label className="text-xs text-gray-400">End (local time)</label>
                 <input
                   type="datetime-local"
                   value={customEnd}
@@ -199,28 +199,28 @@ const UserActivity = () => {
           {error && <p className="text-red-600 text-sm">{error}</p>}
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="glass-card p-6 rounded-xl border border-white/10">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-600">User Directory</h3>
+            <h3 className="text-sm font-semibold text-gray-300">User Directory</h3>
             <button
               type="button"
               onClick={() => loadUidDirectory(timeframe)}
-              className="text-xs text-gray-500 hover:text-gray-800"
+              className="text-xs text-gray-400 hover:text-gray-200"
             >
               Refresh
             </button>
           </div>
-          <p className="text-xs text-gray-500 mb-3">{timeframeLabel}</p>
+          <p className="text-xs text-gray-400 mb-3">{timeframeLabel}</p>
           <input
             value={uidFilter}
             onChange={(e) => setUidFilter(e.target.value)}
             placeholder="Filter users..."
             className="mb-3 w-full px-3 py-2 border rounded-lg text-sm"
           />
-          {uidDirectoryLoading && <p className="text-sm text-gray-500">Loading users...</p>}
+          {uidDirectoryLoading && <p className="text-sm text-gray-400">Loading users...</p>}
           {uidDirectoryError && <p className="text-sm text-red-600">{uidDirectoryError}</p>}
           {!uidDirectoryLoading && uidDirectory.length === 0 && !uidDirectoryError && (
-            <p className="text-sm text-gray-500">No UID activity yet.</p>
+            <p className="text-sm text-gray-400">No UID activity yet.</p>
           )}
           <select
             value={uid}
@@ -242,113 +242,112 @@ const UserActivity = () => {
         </div>
       </div>
 
-      {loading && <p className="text-gray-500">Loading activity...</p>}
+      {loading && <p className="text-gray-400">Loading activity...</p>}
 
       {activity && (
         <div className="space-y-6">
-          <div className="bg-white border border-gray-100 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="glass-card border border-white/10 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-gray-500">UID</p>
-              <p className="text-lg font-bold text-gray-900 font-mono">{activity.uid || uid}</p>
-              <p className="text-xs text-gray-500 mt-1">{activity.summary.total} events · {timeframeLabel}</p>
+              <p className="text-xs text-gray-400">UID</p>
+              <p className="text-lg font-bold text-white font-mono">{activity.uid || uid}</p>
+              <p className="text-xs text-gray-400 mt-1">{activity.summary.total} events · {timeframeLabel}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleCopyUid}
-                className="px-3 py-1.5 text-xs font-semibold border rounded-lg text-gray-600 hover:text-gray-900 flex items-center justify-center gap-1 min-w-[85px]"
+                className="px-3 py-1.5 text-xs font-semibold border rounded-lg text-gray-300 hover:text-white flex items-center justify-center gap-1 min-w-[85px]"
               >
                 {copied ? <><Check size={14} className="text-green-600" /> Copied</> : 'Copy UID'}
               </button>
               <button
                 type="button"
                 onClick={() => navigate(`/logs?uid=${activity.uid || uid}`)}
-                className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="px-3 py-1.5 text-xs font-semibold glass-button text-white rounded-lg hover:glass-panel/20"
               >
                 Open Logs
               </button>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-100 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Events</p>
-              <p className="text-2xl font-bold text-gray-900">{activity.summary.total}</p>
+            <div className="glass-card border border-white/10 rounded-lg p-4">
+              <p className="text-sm text-gray-400">Events</p>
+              <p className="text-2xl font-bold text-white">{activity.summary.total}</p>
             </div>
-            <div className="bg-white border border-gray-100 rounded-lg p-4">
-              <p className="text-sm text-gray-500">First Seen</p>
-              <p className="text-base font-semibold text-gray-900">
+            <div className="glass-card border border-white/10 rounded-lg p-4">
+              <p className="text-sm text-gray-400">First Seen</p>
+              <p className="text-base font-semibold text-white">
                 {activity.summary.firstSeen ? new Date(activity.summary.firstSeen).toLocaleString() : '—'}
               </p>
             </div>
-            <div className="bg-white border border-gray-100 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Last Seen</p>
-              <p className="text-base font-semibold text-gray-900">
+            <div className="glass-card border border-white/10 rounded-lg p-4">
+              <p className="text-sm text-gray-400">Last Seen</p>
+              <p className="text-base font-semibold text-white">
                 {activity.summary.lastSeen ? new Date(activity.summary.lastSeen).toLocaleString() : '—'}
               </p>
             </div>
-            <div className="bg-white border border-gray-100 rounded-lg p-4">
-              <p className="text-sm text-gray-500">IPs used</p>
-              <p className="text-2xl font-bold text-gray-900">{knownIps.length}</p>
+            <div className="glass-card border border-white/10 rounded-lg p-4">
+              <p className="text-sm text-gray-400">IPs used</p>
+              <p className="text-2xl font-bold text-white">{knownIps.length}</p>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">Known IP Addresses</h3>
+          <div className="glass-card border border-white/10 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Known IP Addresses</h3>
             <div className="flex flex-wrap gap-2">
               {knownIps.map((ip) => (
                 <button
                   key={ip}
                   type="button"
-                  className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-mono flex items-center gap-1 hover:bg-indigo-50"
+                  className="px-3 py-1 glass-panel/10 text-gray-100 rounded-full text-xs font-mono flex items-center gap-1 hover:glass-panel/10"
                   onClick={() => navigate(`/logs?uid=${uid}&ip=${ip}`)}
                 >
                   <MapPin size={12} /> {ip}
                 </button>
               ))}
-              {knownIps.length === 0 && <span className="text-gray-500 text-sm">No IPs recorded.</span>}
+              {knownIps.length === 0 && <span className="text-gray-400 text-sm">No IPs recorded.</span>}
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">Top Actions</h3>
+          <div className="glass-card border border-white/10 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Top Actions</h3>
             <div className="space-y-2">
               {topActions.map((action) => (
                 <button
                   key={action.action}
                   type="button"
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 hover:bg-indigo-50"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg glass-panel/5 hover:glass-panel/10"
                   onClick={() => navigate(`/logs?uid=${uid}&search=${encodeURIComponent(action.action || '')}`)}
                 >
                   <span className="truncate pr-4 text-left">{action.action || 'unknown'}</span>
-                  <span className="text-gray-700 font-semibold">{action.count}</span>
+                  <span className="text-gray-200 font-semibold">{action.count}</span>
                 </button>
               ))}
-              {topActions.length === 0 && <p className="text-sm text-gray-500">No recent actions.</p>}
+              {topActions.length === 0 && <p className="text-sm text-gray-400">No recent actions.</p>}
             </div>
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Activity Timeline</h3>
-            <div className="relative border-l-2 border-indigo-200 ml-3 space-y-8 pb-8">
+            <h3 className="text-lg font-bold text-gray-100 mb-4">Activity Timeline</h3>
+            <div className="relative border-l-2 border-white/10 ml-3 space-y-8 pb-8">
               {activity.timeline.map((log) => (
                 <div
                   key={log._id || `${log.timestamp}-${log.rawMessage}`}
                   className="relative pl-8"
                 >
-                  <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-indigo-600 border-4 border-white shadow-sm"></div>
-                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow-sm"></div>
+                  <div className="glass-card p-4 rounded-lg border border-white/10">
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-gray-800">
+                      <h4 className="font-bold text-gray-100">
                         {log.parsedData?.method || 'EVENT'} {log.parsedData?.url || ''}
                       </h4>
                       <span
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${Number(log.parsedData?.status) >= 400 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                          }`}
+                        className={`px-2 py-0.5 rounded text-xs font-bold${Number(log.parsedData?.status) >= 400 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }`}
                       >
                         {log.parsedData?.status || '—'}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
                       <div className="flex items-center gap-1">
                         <Clock size={14} />
                         {new Date(log.timestamp).toLocaleString()}
@@ -357,11 +356,11 @@ const UserActivity = () => {
                       <span>VM: {log.appInfo?.vmId || '-'}</span>
                     </div>
                     {log.parsedData?.message && (
-                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">{log.parsedData.message}</p>
+                      <p className="text-sm text-gray-300 mt-2 line-clamp-2">{log.parsedData.message}</p>
                     )}
                     <button
                       type="button"
-                      className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-sm font-semibold hover:text-indigo-800"
+                      className="mt-3 inline-flex items-center gap-1 text-blue-600 text-sm font-semibold hover:text-blue-800"
                       onClick={() => navigate(`/logs?uid=${uid}&start=${new Date(log.timestamp).toISOString()}`)}
                     >
                       View in Log Explorer <ExternalLink size={14} />
@@ -369,7 +368,7 @@ const UserActivity = () => {
                   </div>
                 </div>
               ))}
-              {activity.timeline.length === 0 && <p className="text-gray-500">No activity recorded for this UID.</p>}
+              {activity.timeline.length === 0 && <p className="text-gray-400">No activity recorded for this UID.</p>}
             </div>
           </div>
         </div>
