@@ -1,13 +1,30 @@
 import React, { useEffect, useState, useRef, memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Server, Activity } from 'lucide-react';
+import { Server, Activity, Trash2 } from 'lucide-react';
 import io from 'socket.io-client';
 import config from '../config';
 
 // Memoized VM Card component to prevent unnecessary re-renders
-const VMCard = memo(({ vm }) => {
+const VMCard = memo(({ vm, onDelete }) => {
+    const handleDelete = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.confirm(`Are you sure you want to permanently delete VM "${vm.hostname}" (${vm._id}) and all its historical monitoring data?`)) {
+            onDelete(vm._id);
+        }
+    };
+
     return (
-        <Link to={`/metrics/vm/${vm._id}`} state={{ agentUrl: vm.agentUrl }} key={vm._id} className="glass-card p-6 rounded-lg border border-white/10 hover:shadow-md transition-shadow block">
+        <Link to={`/metrics/vm/${vm._id}`} state={{ agentUrl: vm.agentUrl }} key={vm._id} className="glass-card p-6 rounded-lg border border-white/10 hover:shadow-md transition-shadow block relative">
+            {vm.status === 'offline' && (
+                <button
+                    onClick={handleDelete}
+                    className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors z-10"
+                    title="Delete Agent Data"
+                >
+                    <Trash2 size={16} />
+                </button>
+            )}
             <div className="flex items-center gap-4 mb-4">
                 <div className="p-2 glass-panel/5 text-blue-600 rounded-lg">
                     <Server size={24} />
@@ -231,6 +248,11 @@ const Dashboard = () => {
         socketsRef.current[vm._id] = socket;
 
         socket.on('metrics:update', (data) => {
+            if (data.vmId !== vm._id) {
+                // Ignore metrics from other agents (prevents cross-talk if multiple VMs share an IP/port fallback)
+                return;
+            }
+
             setVms(prev => ({
                 ...prev,
                 [data.vmId]: {
@@ -281,6 +303,30 @@ const Dashboard = () => {
         };
     }, []);
 
+    const handleDeleteVM = async (vmId) => {
+        try {
+            const res = await fetch(`${config.SERVER_URL}/api/vms/${vmId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setVms(prev => {
+                    const newVms = { ...prev };
+                    delete newVms[vmId];
+                    return newVms;
+                });
+                if (socketsRef.current[vmId]) {
+                    socketsRef.current[vmId].disconnect();
+                    delete socketsRef.current[vmId];
+                }
+            } else {
+                alert("Failed to delete VM data.");
+            }
+        } catch (err) {
+            console.error("Error deleting VM:", err);
+            alert("Error deleting VM.");
+        }
+    };
+
     const vmList = Object.values(vms);
     const onlineCount = vmList.filter(vm => vm.status === 'online').length;
 
@@ -312,7 +358,7 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                 {vmList.map((vm) => (
-                    <VMCard key={vm._id} vm={vm} />
+                    <VMCard key={vm._id} vm={vm} onDelete={handleDeleteVM} />
                 ))}
             </div>
         </div>

@@ -238,8 +238,92 @@ async function queryMetricsRange(vmId, startTime, endTime, limit = 100) {
 
 // Delete old metrics
 async function deleteMetrics(vmId, cutoffDate) {
-    console.warn('⚠ Delete operation not implemented in v2 adapter script yet.');
-    return { deletedCount: 0 };
+    if (!influxDB) throw new Error('InfluxDB client not initialized');
+
+    try {
+        const url = process.env.INFLUXDB_HOST || 'http://localhost:8086';
+        const token = process.env.INFLUXDB_TOKEN || 'my-super-secret-auth-token';
+        const deleteUrl = `${url}/api/v2/delete?org=${encodeURIComponent(org)}&bucket=${encodeURIComponent(bucket)}`;
+
+        const start = new Date(0).toISOString(); // 1970
+        const stop = new Date(cutoffDate).toISOString();
+
+        const measurements = ['cpu', 'memory', 'disk', 'processes', 'services', 'alerts'];
+
+        for (const measurement of measurements) {
+            const payload = JSON.stringify({
+                start: start,
+                stop: stop,
+                predicate: `_measurement="${measurement}" and vm_id="${vmId}"`
+            });
+
+            const response = await fetch(deleteUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: payload
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`InfluxDB delete partial failed for ${measurement}: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+        }
+
+        console.log(`✓ successfully deleted metrics older than ${stop} for vm_id: ${vmId}`);
+        // Assuming 1 since we can't get exact dropped records from the /api/v2/delete endpoint
+        return { deletedCount: 1 };
+    } catch (error) {
+        console.error(`✗ Error deleting partial metrics for VM ${vmId}:`, error.message);
+        throw error;
+    }
+}
+
+// Delete all metrics and alerts for a specific VM
+async function deleteVM(vmId) {
+    if (!influxDB) throw new Error('InfluxDB client not initialized');
+
+    try {
+        const url = process.env.INFLUXDB_HOST || 'http://localhost:8086';
+        const token = process.env.INFLUXDB_TOKEN || 'my-super-secret-auth-token';
+        const deleteUrl = `${url}/api/v2/delete?org=${encodeURIComponent(org)}&bucket=${encodeURIComponent(bucket)}`;
+
+        const now = new Date();
+        const past = new Date(0); // 1970
+
+        const measurements = ['cpu', 'memory', 'disk', 'processes', 'services', 'alerts'];
+
+        for (const measurement of measurements) {
+            const payload = JSON.stringify({
+                start: past.toISOString(),
+                stop: now.toISOString(),
+                predicate: `_measurement="${measurement}" and vm_id="${vmId}"`
+            });
+
+            // We use the global fetch API since Node 18+ has it
+            const response = await fetch(deleteUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: payload
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`InfluxDB delete failed for ${measurement}: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+        }
+
+        console.log(`✓ successfully deleted all metrics and alerts for vm_id: ${vmId}`);
+        return { success: true };
+    } catch (error) {
+        console.error(`✗ Error deleting VM ${vmId} from InfluxDB:`, error.message);
+        throw error;
+    }
 }
 
 // Get storage statistics
@@ -445,6 +529,7 @@ module.exports = {
     queryMetrics,
     queryMetricsRange,
     deleteMetrics,
+    deleteVM,
     getStats,
     getVMStats,
     writeAlert,

@@ -94,16 +94,16 @@ app.get('/api/metrics/:vmId', async (req, res) => {
     try {
         const { vmId } = req.params;
         const { period, limit = 100, startDate, endDate } = req.query;
-        
+
         let startTime;
-        
+
         // Check if custom date range is provided
         if (startDate && endDate) {
             startTime = new Date(startDate);
             const endTime = new Date(endDate);
-            
+
             console.log(`Custom range request: vmId=${vmId}, from=${startTime.toISOString()} to=${endTime.toISOString()}`);
-            
+
             // Query with custom date range
             const query = `
                 SELECT 
@@ -126,9 +126,9 @@ app.get('/api/metrics/:vmId', async (req, res) => {
                 ORDER BY timestamp DESC
                 LIMIT $4;
             `;
-            
+
             const result = await dbAdapter.findMetricsRange(vmId, startTime, endTime, parseInt(limit));
-            
+
             // Transform to match expected format
             const metrics = result.map(row => ({
                 vmId: row.vmId,
@@ -140,15 +140,15 @@ app.get('/api/metrics/:vmId', async (req, res) => {
                 processes: row.processes,
                 services: row.services
             }));
-            
+
             console.log(`Found ${metrics.length} records for custom range`);
             res.json(metrics.reverse()); // Return chronological order
             return;
         }
-        
+
         // Standard period-based query
         console.log(`Historical data request: vmId=${vmId}, period=${period}, limit=${limit}`);
-        
+
         startTime = new Date();
         switch (period) {
             case '1h': startTime.setHours(startTime.getHours() - 1); break;
@@ -177,7 +177,7 @@ app.delete('/api/metrics/:vmId', async (req, res) => {
     try {
         const { vmId } = req.params;
         const { period = '30d' } = req.query;
-        
+
         let cutoffDate = new Date();
         switch (period) {
             case '1d': cutoffDate.setDate(cutoffDate.getDate() - 1); break;
@@ -188,14 +188,38 @@ app.delete('/api/metrics/:vmId', async (req, res) => {
 
         const result = await dbAdapter.deleteMetrics(vmId, cutoffDate);
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             deletedCount: result.deletedCount,
-            message: `Deleted ${result.deletedCount} records older than ${period}`
+            message: `Successfully deleted metrics older than ${period}`
         });
     } catch (error) {
         console.error('Error deleting metrics:', error);
         res.status(500).json({ error: 'Failed to delete metrics' });
+    }
+});
+
+// 5. Delete VM and all its Metrics
+app.delete('/api/vms/:vmId', async (req, res) => {
+    try {
+        const { vmId } = req.params;
+
+        // Remove from memory registry so it stops showing up in discovery
+        if (registry[vmId]) {
+            delete registry[vmId];
+            console.log(`Removed ${vmId} from discovery registry`);
+        }
+
+        // Delete from database adapter (InfluxDB or Timescale)
+        await dbAdapter.deleteVM(vmId);
+
+        res.json({
+            success: true,
+            message: `Successfully deleted VM ${vmId} and all associated metrics/alerts.`
+        });
+    } catch (error) {
+        console.error(`Error deleting VM ${req.params.vmId}:`, error);
+        res.status(500).json({ error: 'Failed to delete VM' });
     }
 });
 
@@ -214,11 +238,11 @@ app.get('/api/storage-stats', async (req, res) => {
 app.get('/api/config/:vmId', (req, res) => {
     const { vmId } = req.params;
     const agent = registry[vmId];
-    
+
     if (!agent) {
         return res.status(404).json({ error: 'Agent not found' });
     }
-    
+
     // Return current configuration (stored in registry)
     res.json({
         vmId: agent.vmId,
@@ -234,11 +258,11 @@ app.get('/api/config/:vmId', (req, res) => {
 app.post('/api/config/:vmId', (req, res) => {
     const { vmId } = req.params;
     const { broadcastInterval, storageInterval } = req.body;
-    
+
     if (!registry[vmId]) {
         return res.status(404).json({ error: 'Agent not found' });
     }
-    
+
     // Update registry with new configuration
     if (broadcastInterval !== undefined) {
         registry[vmId].broadcastInterval = broadcastInterval;
@@ -246,20 +270,20 @@ app.post('/api/config/:vmId', (req, res) => {
     if (storageInterval !== undefined) {
         registry[vmId].storageInterval = storageInterval;
     }
-    
+
     // Emit configuration update to all connected clients (agents will filter by vmId)
     const configUpdate = {
         vmId,
         broadcastInterval: registry[vmId].broadcastInterval,
         storageInterval: registry[vmId].storageInterval
     };
-    
+
     io.emit('config:update', configUpdate);
-    
+
     console.log(`Configuration updated for ${vmId}:`, configUpdate);
-    
-    res.json({ 
-        success: true, 
+
+    res.json({
+        success: true,
         message: 'Configuration updated and broadcasted',
         config: {
             broadcastInterval: registry[vmId].broadcastInterval,
@@ -271,23 +295,23 @@ app.post('/api/config/:vmId', (req, res) => {
 // WebSocket handling for both dashboard and agent connections
 io.on('connection', (socket) => {
     console.log('New WebSocket connection:', socket.id, 'from', socket.handshake.address);
-    
+
     // Handle agent metrics for storage
     socket.on('agent:metrics', async (data) => {
         try {
             console.log(`Received metrics from agent ${data.vmId}`);
-            
+
             // Save to database (TimescaleDB or InfluxDB)
             await dbAdapter.saveMetrics(data);
-            
+
             // Evaluate metrics for alerts
             const alerts = await alertEngine.evaluateMetrics(data);
-            
+
             // Broadcast alerts to dashboard clients
             if (alerts.length > 0) {
                 io.emit('alerts:new', { vmId: data.vmId, alerts });
             }
-            
+
             // Log with IST time for better debugging
             const istTime = new Date(data.timestamp).toLocaleString('en-IN', {
                 timeZone: 'Asia/Kolkata',
@@ -298,14 +322,14 @@ io.on('connection', (socket) => {
                 minute: '2-digit',
                 second: '2-digit'
             });
-            
+
             console.log(`✓ Stored metric for ${data.vmId} at ${istTime} IST (${dbAdapter.getDatabaseType()})`);
-            
+
             // Optionally forward to dashboard clients for real-time display
             socket.broadcast.emit('metrics:update', data);
         } catch (error) {
             console.error(`✗ Error saving to ${dbAdapter.getDatabaseType()}:`, error.message);
-            
+
             // Database-specific error handling
             if (error.message.includes('authentication failed') || error.message.includes('password')) {
                 console.error('💡 Hint: Check database username/password in .env');
@@ -318,16 +342,16 @@ io.on('connection', (socket) => {
             }
         }
     });
-    
+
     // Handle dashboard-specific events
     socket.on('dashboard:subscribe', (data) => {
         console.log('Dashboard subscribed to updates');
     });
-    
+
     socket.on('disconnect', (reason) => {
         console.log('WebSocket connection closed:', socket.id, 'reason:', reason);
     });
-    
+
     socket.on('error', (error) => {
         console.error('WebSocket error:', error);
     });
@@ -338,14 +362,14 @@ app.get('/api/vms/all', async (req, res) => {
     try {
         // Get unique VMs from database
         const dbVms = await dbAdapter.getUniqueVMs();
-        
+
         const allVms = dbVms.map(row => ({
             _id: row.vm_id,
             hostname: row.hostname,
             lastSeen: row.timestamp,
             source: 'database'
         }));
-        
+
         // Add registry VMs that might not be in database yet
         Object.values(registry).forEach(agent => {
             if (!allVms.find(vm => vm._id === agent.vmId)) {
@@ -357,7 +381,7 @@ app.get('/api/vms/all', async (req, res) => {
                 });
             }
         });
-        
+
         // Add status from registry
         const vmsWithStatus = allVms.map(vm => {
             const registryAgent = registry[vm._id];
@@ -368,7 +392,7 @@ app.get('/api/vms/all', async (req, res) => {
                 status: registryAgent && (Date.now() - registryAgent.lastSeen) < 40000 ? 'online' : 'offline'
             };
         });
-        
+
         res.json(vmsWithStatus);
     } catch (error) {
         console.error('Error fetching all VMs:', error);
@@ -381,12 +405,12 @@ app.get('/api/alerts/:vmId', async (req, res) => {
     try {
         const { vmId } = req.params;
         const { severity, metricType, period, limit = 100 } = req.query;
-        
+
         const options = { limit: parseInt(limit) };
-        
+
         if (severity) options.severity = severity;
         if (metricType) options.metricType = metricType;
-        
+
         if (period) {
             const startTime = new Date();
             switch (period) {
@@ -398,7 +422,7 @@ app.get('/api/alerts/:vmId', async (req, res) => {
             }
             options.startTime = startTime;
         }
-        
+
         const alerts = await dbAdapter.findAlerts(vmId, options);
         res.json(alerts);
     } catch (error) {
@@ -425,10 +449,10 @@ app.delete('/api/alerts/:vmId/old', async (req, res) => {
     try {
         const { vmId } = req.params;
         const { days = 30 } = req.query;
-        
+
         const result = await dbAdapter.deleteOldAlerts(vmId, parseInt(days));
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             deletedCount: result.deletedCount,
             message: `Deleted ${result.deletedCount} alerts older than ${days} days`
         });

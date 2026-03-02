@@ -12,7 +12,7 @@ let isInitialized = false;
 // Initialize the selected database
 async function initializeDatabase() {
     console.log(`\n🔧 Initializing database: ${DATABASE_TYPE.toUpperCase()}`);
-    
+
     try {
         if (DATABASE_TYPE === 'influxdb') {
             dbClient = influxdb.initializeInfluxDB();
@@ -26,13 +26,13 @@ async function initializeDatabase() {
         } else {
             throw new Error(`Unknown database type: ${DATABASE_TYPE}. Use 'timescaledb' or 'influxdb'`);
         }
-        
+
         console.log(`Database: ${getDatabaseName()}\n`);
         return dbClient;
     } catch (error) {
         console.error(`✗ ${DATABASE_TYPE.toUpperCase()} initialization error:`, error.message);
         console.error('💡 Please check:');
-        
+
         if (DATABASE_TYPE === 'influxdb') {
             console.error('   1. InfluxDB Core 3 is running');
             console.error('   2. INFLUXDB_HOST, INFLUXDB_TOKEN, and INFLUXDB_DATABASE are set in .env');
@@ -42,7 +42,7 @@ async function initializeDatabase() {
             console.error('   2. Database credentials in .env are correct');
             console.error('   3. Database exists or user has CREATE privileges');
         }
-        
+
         throw error;
     }
 }
@@ -52,7 +52,7 @@ async function saveMetrics(data) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.writeMetrics(data);
     } else {
@@ -65,7 +65,7 @@ async function findMetrics(vmId, startTime, limit = 100) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.queryMetrics(vmId, startTime, limit);
     } else {
@@ -78,7 +78,7 @@ async function findMetricsRange(vmId, startTime, endTime, limit = 100) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.queryMetricsRange(vmId, startTime, endTime, limit);
     } else {
@@ -105,9 +105,9 @@ async function findMetricsRange(vmId, startTime, endTime, limit = 100) {
             ORDER BY timestamp DESC
             LIMIT $4;
         `;
-        
+
         const result = await dbClient.query(query, [vmId, startTime, endTime, limit]);
-        
+
         return result.rows.map(row => ({
             vmId: row.vmId,
             hostname: row.hostname,
@@ -137,11 +137,32 @@ async function deleteMetrics(vmId, cutoffDate) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.deleteMetrics(vmId, cutoffDate);
     } else {
         return await Metric.deleteMany(vmId, cutoffDate);
+    }
+}
+
+// Delete a VM entirely
+async function deleteVM(vmId) {
+    if (!isInitialized) {
+        throw new Error('Database not initialized');
+    }
+
+    if (DATABASE_TYPE === 'influxdb') {
+        return await influxdb.deleteVM(vmId);
+    } else {
+        // Fallback for TimescaleDB
+        try {
+            await dbClient.query('DELETE FROM metrics WHERE vm_id = $1', [vmId]);
+            await dbClient.query('DELETE FROM alerts WHERE vm_id = $1', [vmId]);
+            return { success: true };
+        } catch (e) {
+            console.error("Failed to delete VM from TimescaleDB", e);
+            throw e;
+        }
     }
 }
 
@@ -150,7 +171,7 @@ async function getStorageStats() {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.getStats();
     } else {
@@ -163,7 +184,7 @@ async function getUniqueVMs() {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         // Query unique VMs from InfluxDB
         return await influxdb.getUniqueVMs();
@@ -176,7 +197,7 @@ async function getUniqueVMs() {
             FROM metrics
             ORDER BY vm_id, timestamp DESC;
         `;
-        
+
         const result = await dbClient.query(query);
         return result.rows;
     }
@@ -187,7 +208,7 @@ async function saveAlert(alertData) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.writeAlert(alertData);
     } else {
@@ -200,7 +221,7 @@ async function findAlerts(vmId, options = {}) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.queryAlerts(vmId, options);
     } else {
@@ -213,7 +234,7 @@ async function getAlertStats(vmId, period = '24h') {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         return await influxdb.getAlertStats(vmId, period);
     } else {
@@ -226,7 +247,7 @@ async function deleteOldAlerts(vmId, days = 30) {
     if (!isInitialized) {
         throw new Error('Database not initialized');
     }
-    
+
     if (DATABASE_TYPE === 'influxdb') {
         console.warn('⚠ Delete operation not fully supported in InfluxDB Core 3');
         return { deletedCount: 0 };
@@ -265,6 +286,7 @@ module.exports = {
     findMetrics,
     findMetricsRange,
     deleteMetrics,
+    deleteVM,
     getStorageStats,
     getUniqueVMs,
     saveAlert,

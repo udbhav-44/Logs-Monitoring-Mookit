@@ -1,8 +1,8 @@
 {
-  "server_url": "http://localhost:5000",
-  "external_ip": "172.27.13.44",
-  "vm_id": "vm-002",
-  "hostname": "arch-linux",
+  "server_url": "http://172.27.13.44:5000",
+  "external_ip": "",
+  "vm_id": "vm-default",
+  "hostname": "",
   "broadcast_interval": 0.5,
   "storage_interval": 5,
   "services_to_monitor": [

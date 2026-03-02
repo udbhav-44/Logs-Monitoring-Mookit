@@ -86,6 +86,7 @@ const VMDetails = () => {
         });
 
         socket.on('metrics:update', (data) => {
+            if (data.vmId !== vmId) return; // Prevent cross-talk if multiple agents share an IP
             setLatest(data);
             setMetrics(prev => {
                 const newMetrics = [...prev, data];
