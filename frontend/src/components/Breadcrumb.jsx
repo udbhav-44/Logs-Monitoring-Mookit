@@ -32,6 +32,8 @@ const Breadcrumb = () => {
             </Link>
 
             {pathnames.map((value, index) => {
+                if (value === 'vm') return null;
+
                 const last = index === pathnames.length - 1;
                 const to = `/${pathnames.slice(0, index + 1).join('/')}`;
 
