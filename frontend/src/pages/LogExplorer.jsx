@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { searchLogs } from '../lib/api';
+import { searchLogs, fetchFilters } from '../lib/api';
 import LogDetailModal from '../components/LogDetailModal';
 
 const PAGE_SIZE = 25;
@@ -63,6 +63,8 @@ const LogExplorer = () => {
     sortOrder: 'desc'
   });
 
+  const [filterOptions, setFilterOptions] = useState({ apps: [], vmIds: [] });
+
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
   const fetchLogs = async (nextPage = page, overrideFilters = null) => {
@@ -98,6 +100,12 @@ const LogExplorer = () => {
     });
     setFilters(initialFilters);
     setPage(initialPage);
+
+    // Fetch filter options for dropdowns
+    fetchFilters().then(data => {
+      setFilterOptions({ apps: data.apps || [], vmIds: data.vmIds || [] });
+    }).catch(console.error);
+
     fetchLogs(initialPage, initialFilters).finally(() => {
       skipPageFetchRef.current = false;
     });
@@ -203,17 +211,25 @@ const LogExplorer = () => {
             <option value="30d">Last 30 Days</option>
             <option value="all">All Time</option>
           </select>
-          <input name="app" placeholder="App Name" className="px-4 py-2 border rounded-lg" value={filters.app} onChange={handleFilterChange} />
-          <input name="vmId" placeholder="VM ID" className="px-4 py-2 border rounded-lg" value={filters.vmId} onChange={handleFilterChange} />
+
+          <select name="app" value={filters.app} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg bg-[#0f172a] border-white/10 font-medium text-gray-200 focus:outline-none focus:border-blue-500 transition-colors">
+            <option value="">App Name (All)</option>
+            {filterOptions.apps.map(app => <option key={app} value={app}>{app}</option>)}
+          </select>
+
+          <select name="vmId" value={filters.vmId} onChange={handleFilterChange} className="px-4 py-2 border rounded-lg bg-[#0f172a] border-white/10 font-medium text-gray-200 focus:outline-none focus:border-blue-500 transition-colors">
+            <option value="">VM ID (All)</option>
+            {filterOptions.vmIds.map(vm => <option key={vm} value={vm}>{vm}</option>)}
+          </select>
 
           <div className="relative">
-            <span className="absolute -top-2 left-2 bg-transparent px-1 text-[10px] font-semibold text-gray-400">Start (Local Time)</span>
-            <input name="start" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-200" value={filters.start} onChange={handleFilterChange} />
+            <span className="absolute -top-2 left-2 bg-[#0f172a] px-1 text-[10px] font-semibold text-gray-400">Start (Local Time)</span>
+            <input name="start" type="datetime-local" className="w-full px-4 py-2 border rounded-lg bg-[#0f172a] text-gray-200 border-white/10 focus:outline-none focus:border-blue-500 transition-colors" value={filters.start} onChange={handleFilterChange} />
           </div>
 
           <div className="relative">
-            <span className="absolute -top-2 left-2 bg-transparent px-1 text-[10px] font-semibold text-gray-400">End (Local Time)</span>
-            <input name="end" type="datetime-local" className="w-full px-4 py-2 border rounded-lg text-gray-200" value={filters.end} onChange={handleFilterChange} />
+            <span className="absolute -top-2 left-2 bg-[#0f172a] px-1 text-[10px] font-semibold text-gray-400">End (Local Time)</span>
+            <input name="end" type="datetime-local" className="w-full px-4 py-2 border rounded-lg bg-[#0f172a] text-gray-200 border-white/10 focus:outline-none focus:border-blue-500 transition-colors" value={filters.end} onChange={handleFilterChange} />
           </div>
 
           <input name="search" placeholder="Full-text search" className="px-4 py-2 border rounded-lg md:col-span-2" value={filters.search} onChange={handleFilterChange} />
@@ -293,7 +309,7 @@ const LogExplorer = () => {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium${Number(log.parsedData?.status) >= 500 ? 'bg-red-100 text-red-700' : Number(log.parsedData?.status) >= 400 ? 'bg-orange-100 text-orange-700' : Number(log.parsedData?.status) >= 300 ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }`}
+                      className={`px-2 py-1 rounded text-xs font-medium${Number(log.parsedData?.status) >= 500 ? 'bg-red-100 text-red-700' : Number(log.parsedData?.status) >= 400 ? 'bg-orange-100 text-orange-700' : Number(log.parsedData?.status) >= 300 ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}
                       onClick={(e) => { e.stopPropagation(); quickFilter('status', log.parsedData?.status); }}
                     >
                       {log.parsedData?.status || 'N/A'}

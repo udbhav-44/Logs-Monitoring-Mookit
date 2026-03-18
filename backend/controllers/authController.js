@@ -15,6 +15,10 @@ const login = async (req, res) => {
         const user = await ldapService.authenticate(username, password);
 
         if (user) {
+            if (process.env.ALLOWED_EMAIL && user.email !== process.env.ALLOWED_EMAIL) {
+                return res.status(403).json({ message: 'Access restricted to authorized users only' });
+            }
+
             const token = jwt.sign(
                 { id: user.uid, username: user.username },
                 process.env.JWT_SECRET,

@@ -21,7 +21,7 @@ const getStoredRange = (fallback) => {
 };
 
 // ─── CountUp ────────────────────────────────────────────────────────────────
-const CountUp = ({ value, className }) => {
+const CountUp = ({ value, className, decimals = 0 }) => {
   const ref = useRef(null);
   const prevValue = useRef(0);
 
@@ -34,12 +34,14 @@ const CountUp = ({ value, className }) => {
     anime({
       targets: obj,
       val: [from, to],
-      round: 1,
       easing: 'easeOutExpo',
       duration: 900,
       update() {
         if (ref.current) {
-          ref.current.textContent = Math.round(obj.val).toLocaleString();
+          ref.current.textContent = Number(obj.val).toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+          });
         }
       },
     });
@@ -412,7 +414,7 @@ const Dashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-400 mb-1">Avg Requests/Sec</p>
               <h3 className="text-2xl font-bold text-white">
-                <CountUp value={safeStats.performance?.avgRps} />
+                <CountUp value={safeStats.performance?.avgRps} decimals={2} />
               </h3>
             </div>
             <div className="p-2.5 rounded-xl glass-panel/5">
@@ -570,7 +572,7 @@ const Dashboard = () => {
             >
               <div className="flex items-center justify-between mb-2">
                 <p className="font-semibold text-gray-100 text-sm">{app.app}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium${parseFloat(app.errorRate) > 10 ? 'bg-red-500/10 border-red-500/30 text-red-200 text-red-700' : 'bg-blue-50 text-blue-700' }`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium${parseFloat(app.errorRate) > 10 ? 'bg-red-500/10 border-red-500/30 text-red-200 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
                   {app.errorRate}% err
                 </span>
               </div>

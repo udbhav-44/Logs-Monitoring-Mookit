@@ -198,7 +198,7 @@ const VMDetails = () => {
             <div className="flex justify-between items-start mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-white">{displayHostname}</h1>
-                    <p className="text-gray-400">ID: {vmId}</p>
+                    <p className="text-gray-400">Application ID: {vmId}</p>
                 </div>
                 <ConnectionStatus
                     agentUrl={agentUrl}

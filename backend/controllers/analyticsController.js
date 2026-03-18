@@ -709,8 +709,8 @@ const getFilters = async (req, res) => {
         if (cached) return res.json(cached);
 
         const client = getClient();
-        // Look back 7 days to get active components
-        const timeRange = `timestamp >= now() - INTERVAL 7 DAY`;
+        // Look back 30 days to get active components to match Applications page
+        const timeRange = `timestamp >= now() - INTERVAL 30 DAY`;
 
         const query = `
             SELECT 
