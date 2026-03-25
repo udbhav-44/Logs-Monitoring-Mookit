@@ -18,7 +18,7 @@ A full-stack platform for ingesting, parsing, and exploring logs from distribute
 - **Backend (Logs)** (Node.js + Express + ClickHouse): parses, stores, creates alerts, and serves analytics/search APIs.
 - **Agent (Metrics)** (Python + psutil): Tracks CPU, memory, disk usage, and process stats.
 - **Backend (Metrics)** (Node.js + InfluxDB): Websocket server for real-time telemetry and InfluxDB for time-series historic data.
-- **Frontend** (React + Vite + Tailwind): Unified remote dashboard and log explorer.
+- **Frontend** (React + Vite + Tailwind): Unified remote dashboard and log explorer featuring a premium Glassmorphic UI design.
 
 ## Quick Start
 
@@ -165,9 +165,9 @@ The system includes an automated threat detection engine that scans logs every 1
 
 ## Authentication & Security
 - **LDAP Integration**: Secure login using IITK LDAP credentials (`ldap.cc.iitk.ac.in`).
-- **Session Management**: JWT-based stateless authentication with `localStorage` persistence.
+- **Session Management**: JWT-based stateless authentication with `localStorage` (persistent 30-day "Remember Me" sessions) or `sessionStorage` (single browser session).
 - **Protected Routes**: Frontend routes and Backend APIs (`/api/analytics/*`) are secured.
-- **Auto-Logout**: "Sign Out" functionality to clear sessions.
+- **Auto-Logout**: "Sign Out" functionality to cleanly purge sessions from all storage mediums.
 
 ## Timezone Handling
 - **IST Enforcement**: System-wide enforcement of Indian Standard Time (IST, UTC+05:30).
@@ -264,6 +264,7 @@ You can run the entire stack (Backend, Frontend, ClickHouse, and InfluxDB) using
    ```bash
    docker compose up -d --build
    ```
+   *Note: Always use `--build` if you have made changes to the React frontend or Node backend source code to explicitly recompile the Docker images.*
 
 4. **Firewall Configuration (Cloud Deployments)**
    If you are deploying this on a cloud provider (AWS EC2, GCP, Azure, Oracle Cloud), you **must** configure your Security Groups / Ingress Firewall Rules to allow inbound TCP traffic on the following ports:
