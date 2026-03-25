@@ -464,8 +464,8 @@ function getDefaultServiceConfig(serviceName) {
         'redis': { check_type: 'command', command: 'redis-cli ping' },
         'redis-server': { check_type: 'command', command: 'redis-cli ping' },
         'elasticsearch': { check_type: 'http', url: 'http://127.0.0.1:9200/_cluster/health', expected_status: [200] },
-        'php-fpm': { check_type: 'socket', socket_path: '/run/php/php-fpm.sock' },
-        'php7.4-fpm': { check_type: 'socket', socket_path: '/run/php/php7.4-fpm.sock' },
+        'php8.3-fpm': { check_type: 'socket', socket_path: '/run/php/php8.3-fpm.sock' },
+        'php8.4-fpm': { check_type: 'socket', socket_path: '/run/php/php8.4-fpm.sock' },
         'node': { check_type: 'auto' },
         'nodejs': { check_type: 'auto' },
         'docker': { check_type: 'socket', socket_path: '/var/run/docker.sock' },
@@ -566,8 +566,10 @@ async function metricBroadcastLoop() {
         try {
             const data = await collectMetrics();
 
-            // Broadcast to connected dashboard clients
-            sio.emit('metrics:update', data);
+            // Send real-time data to the server for broadcasting
+            if (server_connected) {
+                serverSio.emit('agent:live_metrics', data);
+            }
 
             // Storage emit
             const storageCycles = Math.floor(STORAGE_INTERVAL / BROADCAST_INTERVAL);

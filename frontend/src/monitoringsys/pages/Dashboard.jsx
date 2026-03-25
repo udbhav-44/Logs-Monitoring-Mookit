@@ -136,10 +136,39 @@ const VMCard = memo(({ vm, onDelete }) => {
 
 const Dashboard = () => {
     const [vms, setVms] = useState({}); // Map: vmId -> vmData
-    const socketsRef = useRef({}); // Map: vmId -> socket instance
+    const serverSocketRef = useRef(null); // Single connection to Server
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     useEffect(() => {
+        // Setup central server socket connection
+        const socket = io(config.SERVER_URL);
+        serverSocketRef.current = socket;
+
+        socket.on('connect', () => {
+            console.log('Connected to Monitoring Server Dashboard stream');
+        });
+
+        socket.on('metrics:update', (data) => {
+            setVms(prev => ({
+                ...prev,
+                [data.vmId]: {
+                    ...prev[data.vmId],
+                    _id: data.vmId,
+                    hostname: data.hostname,
+                    lastSeen: data.timestamp,
+                    cpu: data.cpu,
+                    memory: data.memory,
+                    disk: data.disk,
+                    status: 'online',
+                    agentUrl: prev[data.vmId] ? prev[data.vmId].agentUrl : null // preserve agentUrl if present
+                }
+            }));
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Lost connection to Monitoring Server');
+        });
+
         // 1. Initial fetch of all VMs
         const fetchAllVMs = async () => {
             try {
@@ -159,11 +188,6 @@ const Dashboard = () => {
                         memory: null,
                         disk: null
                     };
-
-                    // Connect to online agents
-                    if (vm.status === 'online' && !socketsRef.current[vm._id]) {
-                        connectToAgent(vm);
-                    }
                 });
 
                 setVms(vmsMap);
@@ -175,6 +199,11 @@ const Dashboard = () => {
         };
 
         fetchAllVMs();
+
+        // Cleanup Server socket on unmount
+        return () => {
+            if (socket) socket.disconnect();
+        };
     }, []);
 
     // 2. Periodic status check (less frequent, only updates status)
@@ -196,14 +225,6 @@ const Dashboard = () => {
                                     ...updated[vm._id],
                                     status: vm.status
                                 };
-
-                                // Handle connection changes
-                                if (vm.status === 'online' && !socketsRef.current[vm._id]) {
-                                    connectToAgent(vm);
-                                } else if (vm.status === 'offline' && socketsRef.current[vm._id]) {
-                                    socketsRef.current[vm._id].disconnect();
-                                    delete socketsRef.current[vm._id];
-                                }
                             }
                         } else {
                             // New VM discovered
@@ -218,10 +239,6 @@ const Dashboard = () => {
                                 memory: null,
                                 disk: null
                             };
-
-                            if (vm.status === 'online') {
-                                connectToAgent(vm);
-                            }
                         }
                     });
 
@@ -235,97 +252,6 @@ const Dashboard = () => {
         const interval = setInterval(checkStatus, 10000); // Check every 10s
         return () => clearInterval(interval);
     }, []);
-
-    const connectToAgent = (vm) => {
-        // Only connect to online agents
-        if (vm.status !== 'online') return;
-
-        // Construct Direct URL (e.g., http://localhost:5001)
-        const agentUrl = `${vm.ip}:${vm.port}`;
-        console.log(`Connecting directly to agent ${vm._id} at ${agentUrl}`);
-
-        const socket = io(agentUrl);
-        socketsRef.current[vm._id] = socket;
-
-        socket.on('metrics:update', (data) => {
-            if (data.vmId !== vm._id) {
-                // Ignore metrics from other agents (prevents cross-talk if multiple VMs share an IP/port fallback)
-                return;
-            }
-
-            setVms(prev => ({
-                ...prev,
-                [data.vmId]: {
-                    ...prev[data.vmId],
-                    _id: data.vmId,
-                    hostname: data.hostname,
-                    lastSeen: data.timestamp,
-                    cpu: data.cpu,
-                    memory: data.memory,
-                    disk: data.disk,
-                    status: 'online',
-                    agentUrl // Store for details page link
-                }
-            }));
-        });
-
-        socket.on('disconnect', () => {
-            console.log(`Lost connection to ${vm._id}`);
-            setVms(prev => {
-                // Only update if status actually changed
-                if (prev[vm._id]?.status === 'offline') return prev;
-
-                return {
-                    ...prev,
-                    [vm._id]: { ...prev[vm._id], status: 'offline' }
-                };
-            });
-        });
-
-        socket.on('connect_error', () => {
-            console.log(`Connection error for ${vm._id}`);
-            setVms(prev => {
-                // Only update if status actually changed
-                if (prev[vm._id]?.status === 'offline') return prev;
-
-                return {
-                    ...prev,
-                    [vm._id]: { ...prev[vm._id], status: 'offline' }
-                };
-            });
-        });
-    };
-
-    // Cleanup sockets on unmount
-    useEffect(() => {
-        return () => {
-            Object.values(socketsRef.current).forEach(s => s.disconnect());
-        };
-    }, []);
-
-    const handleDeleteVM = async (vmId) => {
-        try {
-            const res = await fetch(`${config.SERVER_URL}/api/vms/${vmId}`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                setVms(prev => {
-                    const newVms = { ...prev };
-                    delete newVms[vmId];
-                    return newVms;
-                });
-                if (socketsRef.current[vmId]) {
-                    socketsRef.current[vmId].disconnect();
-                    delete socketsRef.current[vmId];
-                }
-            } else {
-                alert("Failed to delete VM data.");
-            }
-        } catch (err) {
-            console.error("Error deleting VM:", err);
-            alert("Error deleting VM.");
-        }
-    };
 
     const vmList = Object.values(vms);
     const onlineCount = vmList.filter(vm => vm.status === 'online').length;

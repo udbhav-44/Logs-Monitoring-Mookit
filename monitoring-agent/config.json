@@ -1,9 +1,9 @@
 {
-  "server_url": "http://172.27.13.44:5000",
+  "server_url": "http://localhost:5000",
   "external_ip": "",
-  "vm_id": "vm-default",
-  "hostname": "",
-  "broadcast_interval": 0.5,
+  "vm_id": "vm-test",
+  "hostname": "test-linux",
+  "broadcast_interval": 0.1,
   "storage_interval": 5,
   "services_to_monitor": [
     "nginx",
@@ -11,7 +11,7 @@
     "mongodb",
     "redis",
     "elasticsearch",
-    "php8.2-fpm",
+    "php8.4-fpm",
     "nodejs",
     "docker",
     "ssh",
