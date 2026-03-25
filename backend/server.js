@@ -7,7 +7,7 @@ const { connectClickHouse } = require('./config/clickhouse');
 const cron = require('node-cron');
 const alertService = require('./services/alertService');
 
-// connectClickHouse();
+connectClickHouse();
 
 
 const app = express();
