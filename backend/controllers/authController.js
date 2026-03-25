@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, rememberMe } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ message: 'Please provide username and password' });
@@ -20,9 +20,9 @@ const login = async (req, res) => {
             }
 
             const token = jwt.sign(
-                { id: user.uid, username: user.username },
+                { id: user.uid, username: user.username, rememberMe: !!rememberMe },
                 process.env.JWT_SECRET,
-                { expiresIn: '24h' }
+                { expiresIn: rememberMe ? '30d' : '24h' }
             );
 
             res.json({
@@ -57,9 +57,9 @@ const refresh = async (req, res) => {
         }
 
         const newToken = jwt.sign(
-            { id: decoded.id || decoded.uid, username: decoded.username },
+            { id: decoded.id || decoded.uid, username: decoded.username, rememberMe: decoded.rememberMe },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: decoded.rememberMe ? '30d' : '24h' }
         );
 
         res.json({ token: newToken });

@@ -27,7 +27,7 @@ const processQueue = (error, token = null) => {
 // Add a request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -57,12 +57,16 @@ api.interceptors.response.use(
 
       originalRequest._retry = true;
       isRefreshing = true;
-      const currentToken = localStorage.getItem('token');
+      const currentToken = localStorage.getItem('token') || sessionStorage.getItem('token');
 
       try {
         const { data } = await axios.post(`${API_URL}/api/auth/refresh`, { token: currentToken });
         const newToken = data.token;
-        localStorage.setItem('token', newToken);
+        if (sessionStorage.getItem('token')) {
+          sessionStorage.setItem('token', newToken);
+        } else {
+          localStorage.setItem('token', newToken);
+        }
         api.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
         originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
         processQueue(null, newToken);
@@ -71,6 +75,8 @@ api.interceptors.response.use(
         processQueue(err, null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {

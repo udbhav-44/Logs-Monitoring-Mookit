@@ -23,6 +23,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
     const navigate = useNavigate();
     const cardRef = useRef(null);
 
@@ -46,14 +47,15 @@ const Login = () => {
             const res = await fetch(`${baseUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, rememberMe })
             });
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Login failed');
 
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data));
+            const storage = rememberMe ? localStorage : sessionStorage;
+            storage.setItem('token', data.token);
+            storage.setItem('user', JSON.stringify(data));
 
             anime({
                 targets: cardRef.current,
@@ -173,7 +175,7 @@ const Login = () => {
                         </p>
                     </div>
 
-                    <form className="space-y-4" onSubmit={handleSubmit}>
+                    <form className="space-y-4" onSubmit={handleSubmit} method="POST" action="">
                         <div className="relative group">
                             <label htmlFor="username" className="sr-only">Username</label>
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -215,6 +217,20 @@ const Login = () => {
                             >
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                             </button>
+                        </div>
+
+                        <div className="flex items-center">
+                            <input
+                                id="remember-me"
+                                name="remember-me"
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 transition-colors"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300 select-none cursor-pointer">
+                                Remember me
+                            </label>
                         </div>
 
                         {error && (
