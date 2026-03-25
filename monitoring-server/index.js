@@ -296,6 +296,11 @@ app.post('/api/config/:vmId', (req, res) => {
 io.on('connection', (socket) => {
     console.log('New WebSocket connection:', socket.id, 'from', socket.handshake.address);
 
+    // Handle live metrics from agent - broadcast to all frontend clients
+    socket.on('agent:live_metrics', (data) => {
+        socket.broadcast.emit('metrics:update', data);
+    });
+
     // Handle agent metrics for storage
     socket.on('agent:metrics', async (data) => {
         try {

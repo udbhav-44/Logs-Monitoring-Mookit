@@ -72,31 +72,32 @@ const VMDetails = () => {
         return () => clearInterval(interval);
     }, [vmId, agentUrl]);
 
-    // 2. Connect when agentUrl is available and VM is online
+    // 2. Connect when VM is online
     useEffect(() => {
         if (!agentUrl || vmInfo?.status === 'offline') return;
 
-        console.log(`VMDetails connecting to ${agentUrl}`);
-        const socket = io(agentUrl);
+        console.log(`VMDetails connecting to central server for live updates`);
+        const socket = io(config.SERVER_URL);
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('Connected to agent');
+            console.log('Connected to server stream');
             setConnectionStatus('connected');
         });
 
         socket.on('metrics:update', (data) => {
-            if (data.vmId !== vmId) return; // Prevent cross-talk if multiple agents share an IP
-            setLatest(data);
-            setMetrics(prev => {
-                const newMetrics = [...prev, data];
-                if (newMetrics.length > 30) newMetrics.shift(); // Keep last 30 points
-                return newMetrics;
-            });
+            if (data.vmId === vmId) {
+                setLatest(data);
+                setMetrics(prev => {
+                    const newMetrics = [...prev, data];
+                    if (newMetrics.length > 30) newMetrics.shift(); // Keep last 30 points
+                    return newMetrics;
+                });
+            }
         });
 
         socket.on('disconnect', () => {
-            console.log('Disconnected from agent');
+            console.log('Disconnected from server stream');
             setConnectionStatus('disconnected');
         });
 
@@ -116,7 +117,7 @@ const VMDetails = () => {
             clearTimeout(connectionTimeout);
             socket.disconnect();
         };
-    }, [agentUrl, vmInfo?.status]);
+    }, [agentUrl, vmId, vmInfo?.status]);
 
     if (!agentUrl || !vmInfo) return <div className="container">Loading VM information...</div>;
 
@@ -257,10 +258,10 @@ const VMDetails = () => {
                             <Activity className="w-16 h-16 text-red-500 mx-auto mb-4" />
                             <h2 className="text-2xl font-bold text-red-600 mb-2">Connection Failed</h2>
                             <p className="text-gray-300 text-lg">
-                                Unable to establish a real-time connection to the agent at <span className="font-mono glass-panel/10 rounded px-1">{agentUrl}</span>.
+                                Unable to establish a real-time connection to the central monitoring server.
                             </p>
                             <p className="text-gray-400 mt-4">
-                                The agent may be unreachable, restarting, or behind a restrictive firewall. Please try again later or check agent logs.
+                                The server may be unreachable or offline. Please try again later.
                             </p>
                             <button
                                 onClick={() => window.location.reload()}

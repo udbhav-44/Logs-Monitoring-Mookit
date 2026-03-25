@@ -9,7 +9,6 @@ const util = require('util');
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { Server: SocketIOServer } = require('socket.io');
 const { io: socketIoClient } = require('socket.io-client');
 const si = require('systeminformation');
 
@@ -41,14 +40,14 @@ const SERVICES_MONITOR = config.services_to_monitor || [];
 let broadcast_counter = 0;
 let storage_counter = 0;
 
-// Create Express Server for direct dashboard connections
+// Minimal HTTP server (required for port binding / health checks only)
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 
+// Health check endpoint so the server can verify agent is alive
+app.get('/health', (req, res) => res.json({ status: 'ok', vmId: VM_ID, hostname: HOSTNAME }));
+
 const httpServer = http.createServer(app);
-const sio = new SocketIOServer(httpServer, {
-    cors: { origin: "*", credentials: true }
-});
 
 // Create Socket.IO Client for interacting with the main server
 const serverSio = socketIoClient(DISCOVERY_URL, {
@@ -464,8 +463,8 @@ function getDefaultServiceConfig(serviceName) {
         'redis': { check_type: 'command', command: 'redis-cli ping' },
         'redis-server': { check_type: 'command', command: 'redis-cli ping' },
         'elasticsearch': { check_type: 'http', url: 'http://127.0.0.1:9200/_cluster/health', expected_status: [200] },
-        'php-fpm': { check_type: 'socket', socket_path: '/run/php/php-fpm.sock' },
-        'php7.4-fpm': { check_type: 'socket', socket_path: '/run/php/php7.4-fpm.sock' },
+        'php8.3-fpm': { check_type: 'socket', socket_path: '/run/php/php8.3-fpm.sock' },
+        'php8.4-fpm': { check_type: 'socket', socket_path: '/run/php/php8.4-fpm.sock' },
         'node': { check_type: 'auto' },
         'nodejs': { check_type: 'auto' },
         'docker': { check_type: 'socket', socket_path: '/var/run/docker.sock' },
@@ -566,8 +565,10 @@ async function metricBroadcastLoop() {
         try {
             const data = await collectMetrics();
 
-            // Broadcast to connected dashboard clients
-            sio.emit('metrics:update', data);
+            // Send real-time data to the server for broadcasting
+            if (server_connected) {
+                serverSio.emit('agent:live_metrics', data);
+            }
 
             // Storage emit
             const storageCycles = Math.floor(STORAGE_INTERVAL / BROADCAST_INTERVAL);
@@ -612,7 +613,7 @@ async function registrationLoop() {
     }, 0);
 }
 
-serverSio.on('config_update', (data) => {
+serverSio.on('config:update', (data) => {
     if (data.vmId === VM_ID) {
         console.log("Received configuration update from server:", data);
         if (data.broadcastInterval !== undefined) BROADCAST_INTERVAL = data.broadcastInterval;
@@ -621,19 +622,6 @@ serverSio.on('config_update', (data) => {
         broadcast_counter = 0;
         storage_counter = 0;
     }
-});
-
-sio.on('connection', (socket) => {
-    socket.on('config_update', (data) => {
-        if (data.vmId === VM_ID) {
-            console.log("Received configuration update from client:", data);
-            if (data.broadcastInterval !== undefined) BROADCAST_INTERVAL = data.broadcastInterval;
-            if (data.storageInterval !== undefined) STORAGE_INTERVAL = data.storageInterval;
-
-            broadcast_counter = 0;
-            storage_counter = 0;
-        }
-    });
 });
 
 console.log(`Starting Node.js Agent Server on 0.0.0.0:${AGENT_PORT}`);
