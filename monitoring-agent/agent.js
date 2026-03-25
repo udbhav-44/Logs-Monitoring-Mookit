@@ -9,7 +9,6 @@ const util = require('util');
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { Server: SocketIOServer } = require('socket.io');
 const { io: socketIoClient } = require('socket.io-client');
 const si = require('systeminformation');
 
@@ -41,14 +40,14 @@ const SERVICES_MONITOR = config.services_to_monitor || [];
 let broadcast_counter = 0;
 let storage_counter = 0;
 
-// Create Express Server for direct dashboard connections
+// Minimal HTTP server (required for port binding / health checks only)
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 
+// Health check endpoint so the server can verify agent is alive
+app.get('/health', (req, res) => res.json({ status: 'ok', vmId: VM_ID, hostname: HOSTNAME }));
+
 const httpServer = http.createServer(app);
-const sio = new SocketIOServer(httpServer, {
-    cors: { origin: "*", credentials: true }
-});
 
 // Create Socket.IO Client for interacting with the main server
 const serverSio = socketIoClient(DISCOVERY_URL, {
@@ -614,7 +613,7 @@ async function registrationLoop() {
     }, 0);
 }
 
-serverSio.on('config_update', (data) => {
+serverSio.on('config:update', (data) => {
     if (data.vmId === VM_ID) {
         console.log("Received configuration update from server:", data);
         if (data.broadcastInterval !== undefined) BROADCAST_INTERVAL = data.broadcastInterval;
@@ -623,19 +622,6 @@ serverSio.on('config_update', (data) => {
         broadcast_counter = 0;
         storage_counter = 0;
     }
-});
-
-sio.on('connection', (socket) => {
-    socket.on('config_update', (data) => {
-        if (data.vmId === VM_ID) {
-            console.log("Received configuration update from client:", data);
-            if (data.broadcastInterval !== undefined) BROADCAST_INTERVAL = data.broadcastInterval;
-            if (data.storageInterval !== undefined) STORAGE_INTERVAL = data.storageInterval;
-
-            broadcast_counter = 0;
-            storage_counter = 0;
-        }
-    });
 });
 
 console.log(`Starting Node.js Agent Server on 0.0.0.0:${AGENT_PORT}`);
