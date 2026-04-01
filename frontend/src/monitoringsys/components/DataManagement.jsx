@@ -45,7 +45,6 @@ const DataManagement = ({ vmId, hostname }) => {
         }
 
         setLoading(true);
-        setLoading(true);
 
         try {
             const response = await fetch(`${config.SERVER_URL}/api/metrics/${vmId}?period=${period}`, {

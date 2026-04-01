@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, TrendingUp, RefreshCw } from 'lucide-react';
+import { Calendar, Download, TrendingUp, RefreshCw, Activity, Database, Server } from 'lucide-react';
 import config from '../config';
 import { toast } from '../../components/Toast';
 import {

@@ -253,6 +253,23 @@ const Dashboard = () => {
         return () => clearInterval(interval);
     }, []);
 
+    const handleDeleteVM = async (vmId) => {
+        try {
+            const res = await fetch(`${config.SERVER_URL}/api/vms/${vmId}`, { method: 'DELETE' });
+            if (res.ok) {
+                setVms(prev => {
+                    const updated = { ...prev };
+                    delete updated[vmId];
+                    return updated;
+                });
+            } else {
+                console.error('Failed to delete VM:', await res.text());
+            }
+        } catch (err) {
+            console.error('Error deleting VM:', err);
+        }
+    };
+
     const vmList = Object.values(vms);
     const onlineCount = vmList.filter(vm => vm.status === 'online').length;
 
