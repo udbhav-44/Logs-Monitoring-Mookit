@@ -141,7 +141,8 @@ const Dashboard = () => {
 
     useEffect(() => {
         // Setup central server socket connection
-        const socket = io(config.SERVER_URL);
+        const ioPath = config.SERVER_URL.endsWith('/') ? `${config.SERVER_URL}socket.io` : `${config.SERVER_URL}/socket.io`;
+        const socket = io('/', { path: ioPath });
         serverSocketRef.current = socket;
 
         socket.on('connect', () => {

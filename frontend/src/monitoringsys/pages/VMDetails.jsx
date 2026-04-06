@@ -77,7 +77,8 @@ const VMDetails = () => {
         if (!agentUrl || vmInfo?.status === 'offline') return;
 
         console.log(`VMDetails connecting to central server for live updates`);
-        const socket = io(config.SERVER_URL);
+        const ioPath = config.SERVER_URL.endsWith('/') ? `${config.SERVER_URL}socket.io` : `${config.SERVER_URL}/socket.io`;
+        const socket = io('/', { path: ioPath });
         socketRef.current = socket;
 
         socket.on('connect', () => {
