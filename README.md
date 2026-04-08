@@ -1,297 +1,202 @@
-# Centralized Log Monitoring System
+# Logs-Monitoring-Mookit: End-to-End System Documentation
 
-A full-stack platform for ingesting, parsing, and exploring logs from distributed applications and web servers (Nginx). The system provides real-time ingestion, fast search, SQL-based filtering, and analytics dashboards to track traffic, user activity, and anomalies.
+![NodeJS](https://img.shields.io/badge/node.js-v18+-68a063?logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-UI-61dafb?logo=react&logoColor=black)
+![ClickHouse](https://img.shields.io/badge/ClickHouse-OLAP-ff0000?logo=clickhouse&logoColor=white)
+![InfluxDB](https://img.shields.io/badge/InfluxDB-Time--Series-22adcf?logo=influxdb&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ed?logo=docker&logoColor=white)
 
-## Highlights
+**Logs-Monitoring-Mookit** is a unified, centralized, and highly scalable stack designed to natively monitor both the **System Health (Metrics)** and **Application Traffic (Logs)** of distributed servers through a premium React/Vite dashboard.
 
-- **Real-time ingestion**: Lightweight agents tail logs and stream them to the backend.
-- **Strict format parsing**: Accepts only well-formed nginx combined logs and your app log format.
-- **Fast analytics**: Powered by ClickHouse for high-performance querying of millions of log lines.
-- **Explorer + filters**: Full-text search plus structured filters (IP, UID, course, status, source, app, VM, time range).
-- **Security Alerts**: Automated email alerts for suspicious activity (Brute force, Traffic Spikes, etc.).
-- **Multi-VM ready**: Agent is portable and configurable per VM.
-- **Advanced Metrics**: Track Average Response Size, RPS, and Peak RPM.
+## Table of Contents
+1. [Architecture & Design Choices](#1-architecture--design-choices)
+2. [Quick Installation](#2-quick-installation)
+3. [Configuration Guide](#3-configuration-guide)
+4. [Production Deployment](#4-production-deployment)
+5. [Security & Analytics Capabilities](#5-security--analytics-capabilities)
+6. [Future Works](#6-future-works)
 
-## Architecture
+---
 
-- **Agent (Logs)** (Node.js + Chokidar): watches log files/folders, filters, batches, and sends logs.
-- **Backend (Logs)** (Node.js + Express + ClickHouse): parses, stores, creates alerts, and serves analytics/search APIs.
-- **Agent (Metrics)** (Python + psutil): Tracks CPU, memory, disk usage, and process stats.
-- **Backend (Metrics)** (Node.js + InfluxDB): Websocket server for real-time telemetry and InfluxDB for time-series historic data.
-- **Frontend** (React + Vite + Tailwind): Unified remote dashboard and log explorer featuring a premium Glassmorphic UI design.
+## 1. Architecture & Design Choices
 
-## Quick Start
+Before deploying, it helps to understand the system dependencies and flow. The architecture is split into two specialized pipelines that converge into a unified dashboard.
 
-1. **Make the start script executable**
-   ```bash
-   chmod +x start-all.sh
-   ```
-2. **Run the Database Stack via Docker**
-   ```bash
-   docker compose up -d
-   ```
-   This starts the required `clickhouse` (Log Analytics) and `influxdb:2` (System Metrics) containers.
+```mermaid
+flowchart LR
+    subgraph "Remote Nodes (Agents)"
+        LA["Log Agent (Node.js)"]
+        MA["Metric Agent (Node.js)"]
+    end
 
-3. **Run the Application Stack via PM2**
-   ```bash
-   pm2 start ecosystem.config.js
-   pm2 save
-   ```
-   This orchestrates:
-   - `log-backend` (Cluster mode) on `http://localhost:5002`
-   - `monitoring-backend` (Websocket/Telemetry) on `http://localhost:5000`
-   - `monitoring-agent` (Python collector)
-   - `log-frontend` (Vite) on `http://localhost:5173`
+    subgraph "Mothership (Central Server)"
+        LB["Log Backend (REST API)"]
+        MB["Metric Backend (WebSockets)"]
+        
+        DB1[("ClickHouse (OLAP)")]
+        DB2[("InfluxDB v2 (Time-Series)")]
+        
+        UI["Unified Dashboard (React/Vite)"]
+    end
 
-4. **Open the dashboard**
-   ```text
-   http://localhost:5173
-   ```
-
-## Log Formats Accepted (Strict)
-
-Only these two formats are ingested. Everything else is rejected at the agent.
-
-**1) Nginx combined**
-```
-49.37.223.210 - - [28/Jan/2026:00:00:10 +0000] "POST /studentapi/see908q32526/lectures/12/analytics HTTP/1.1" 200 63 "https://..." "Mozilla/5.0 ..."
+    LA -- "POST /api/ingest" --> LB
+    LB -- "Batch Insert" --> DB1
+    
+    MA -- "WSS Telemetry" --> MB
+    MB -- "Write API" --> DB2
+    
+    DB1 -. "Query Analytics" .-> UI
+    DB2 -. "Stream Metrics" .-> UI
+    MB -. "Live Alerts" .-> UI
 ```
 
-**2) App log format**
-```
-[2026-01-22T00:04:43.874Z]  POST  200  /quizzes/take/1  62146  ee966q32526  174.230.185.2  [155.586 ms]  Mozilla/5.0 ...
-```
-Where:
-- `uid` = `62146`
-- `course` = `ee966q32526`
+### A. The Log Analytics Pipeline
+**Goal:** Track user requests, parse access logs natively, identify errors, and detect security threats seamlessly.
+*   **The Log Agent (Node.js):** Sits on your remote application server. It tails logs, parses them strictly (Nginx Combined format or Custom App format), groups them into batches, compresses them, and sends them to the central server.
+*   **The Log Backend (Node.js + Express):** Validates incoming logs, runs Threat Detection (SQLi, XSS, Brute Forces), and natively pushes them into the database.
+*   **The Database (ClickHouse):** We utilize ClickHouse over Postgres because ClickHouse is an OLAP columnar database. It provides extremely high-performance query execution across millions of analytical log rows.
 
-## Project Structure
+### B. The System Metrics Pipeline
+**Goal:** Monitor CPU, RAM, Disk, and Service uptime, automatically routing critical email alerts if thresholds are exceeded.
+*   **The Metric Agent (Node.js):** Deployed to target machines to asynchronously poll hardware and logical service statuses.
+*   **The Metric Backend (Node.js + WebSockets):** Receives live telemetry data, tests against the internal Alert Engine algorithm, and routes telemetry directly to the frontend via WebSockets.
+*   **The Database (InfluxDB v2):** InfluxDB is a Time-Series Database optimized explicitly for storage and aggregation of time-series metric snapshots.
 
+---
+
+## 2. Quick Installation
+
+### Prerequisites
+*   **Docker & Docker Compose** (for the databases)
+*   **Node.js (v18+) & NPM** (for backend APIs and frontend builds)
+*   **PM2** (`npm install -g pm2`)
+
+### Step 1: Database Initialization
+Use Docker to spin up the ClickHouse and InfluxDB instances:
+```bash
+docker compose up -d
 ```
-├── agent/              # Log Collector Agent (Node)
-├── backend/            # Log Analytics API (Node + ClickHouse)
-├── monitoring-agent/   # System Metrics Collector (Python)
-├── monitoring-server/  # Telemetry WebSocket API (Node + InfluxDB)
-├── frontend/           # Unified React Dashboard 
-├── docker-compose.yml  # Database services (ClickHouse + InfluxDB)
-└── ecosystem.config.js # Global PM2 orchestrator
+*(Starts `clickhouse-server` on port 8123 and `influxdb:2` on port 8086)*
+
+### Step 2: Initialize the Unified Stack
+Initialize the application cluster using `pm2`:
+```bash
+npm install
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+cd monitoring-server && npm install && cd ..
+cd monitoring-agent && npm install && cd ..
+cd agent && npm install && cd ..
+
+pm2 start ecosystem.config.js
+pm2 save
 ```
 
-## Configuration
+### Step 3: Access the Interface
+Navigate to **http://localhost:5173**
 
-### Backend environment (`backend/.env`)
-```
-PORT=5002
-HOST=0.0.0.0
-JSON_BODY_LIMIT=10mb
-OVERVIEW_PRECOMPUTE_MS=5000
-APPLICATIONS_PRECOMPUTE_MS=10000
+---
 
-# ClickHouse Configuration
+## 3. Configuration Guide
+
+System configurations are driven entirely by environment variables. 
+
+### A. Master Config (`backend/.env`)
+The unified backends rely on this primary configuration.
+```ini
+# CORE SERVER
+PORT=5002                        
+HOST=0.0.0.0                     
+
+# DATABASE: CLICKHOUSE
 CLICKHOUSE_HOST=http://localhost:8123
 CLICKHOUSE_DATABASE=logs
 CLICKHOUSE_USER=default
 CLICKHOUSE_PASSWORD=login123
 
-# Email Alerts
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-ALERT_TO_EMAIL=recipient@example.com
+# EMAIL ALERTS
+SMTP_HOST=smtp.gmail.com         
+SMTP_PORT=587                    
+SMTP_SECURE=false                
+SMTP_USER=alerts@yourdomain.com  
+SMTP_PASS="app_specific_password" 
+ADMIN_EMAILS=admin@yourdomain.com 
+
+# AUTHENTICATION
+LDAP_URL=ldap://ldap.example.com:389  
+LDAP_BASE_DN=ou=People,dc=example
+JWT_SECRET=super-secret-key           
 ```
 
-### Frontend environment (`frontend/.env`)
-```
-VITE_API_BASE_URL=http://<BACKEND_HOST>:5002
-VITE_DASHBOARD_REFRESH_MS=5000
-VITE_APPLICATIONS_REFRESH_MS=10000
-```
-
-### Agent environment (`agent/.env`)
-```
-BACKEND_URL=http://<BACKEND_HOST>:5002/api/ingest
-LOG_FILES=/var/log/nginx/access.log,/var/log/my-app.log
-APP_NAME=Central-VM
-VM_ID=vm-01
-BATCH_SIZE=1000
-FLUSH_INTERVAL_MS=500
-TAIL_FROM_END=0
-USE_POLLING=0
-
-# Resume offsets (restart-safe)
-STATE_FILE=.offsets.json
-RESET_OFFSETS=0
-READ_NEW_FILES_FROM_START=1
-
-# Filter nginx routes
-NGINX_REJECT_PREFIXES=/studentapi,/api
-
-# Payload sizing / compression
-MAX_BATCH_BYTES=1000000
-USE_GZIP=1
-
-# Reliability / buffering
-MAX_BUFFER_ITEMS=20000
-MAX_BUFFER_BYTES=20000000
-ENABLE_SPOOL=1
-SPOOL_DIR=spool
-MAX_SPOOL_BYTES=209715200
-RETRY_BASE_MS=1000
-RETRY_MAX_MS=30000
-RETRY_JITTER_MS=250
-HTTP_TIMEOUT_MS=10000
+### B. Frontend Interface (`frontend/.env`)
+Vite builds require static IPs at compile time. Replace `localhost` with the server's public IP address or FQDN.
+```ini
+VITE_API_BASE_URL=http://<SERVER_IP>:5002   
+VITE_SERVER_URL=http://<SERVER_IP>:5000     
 ```
 
-## Log Explorer
-
-- **Course filter**: matches `parsedData.course` (supports partial matches).
-- **Course column**: visible in the table and clickable for quick filtering.
-- **Full-text search**: searches URL/message/raw text.
-
-## Security & Threat Detection
-
-The system includes an automated threat detection engine that scans logs every 15 minutes for suspicious patterns.
-
-**Detected Threats:**
-- **Brute Force Attacks**: High volume of 401/403 errors from a single IP (>20 reqs/15min).
-- **SQL Injection (SQLi)**: Patterns like `UNION SELECT`, `OR 1=1`, `DROP TABLE`.
-- **Cross-Site Scripting (XSS)**: Patterns like `<script>`, `javascript:`, `onerror=`.
-- **Path Traversal**: Attempts to access parent directories (`../`, `..%2F`, `/etc/passwd`).
-- **Sensitive File Access**: Access attempts for `.env`, `.git`, `.aws` config files.
-- **Traffic Spikes**: Alerts if current RPM exceeds `24h Avg + 2 * StdDev`.
-
-**Alerting:**
-- Alerts are aggregated and sent via email.
-- **Cooldown**: To prevent spam, alerts for the same actor and threat type are silenced for 1 hour after the first notification.
-
-## Authentication & Security
-- **LDAP Integration**: Secure login using IITK LDAP credentials (`ldap.cc.iitk.ac.in`).
-- **Session Management**: JWT-based stateless authentication with `localStorage` (persistent 30-day "Remember Me" sessions) or `sessionStorage` (single browser session).
-- **Protected Routes**: Frontend routes and Backend APIs (`/api/analytics/*`) are secured.
-- **Auto-Logout**: "Sign Out" functionality to cleanly purge sessions from all storage mediums.
-
-## Timezone Handling
-- **IST Enforcement**: System-wide enforcement of Indian Standard Time (IST, UTC+05:30).
-- **Display**: All timestamps in the Logs Explorer and details view are formatted to `Asia/Kolkata`.
-
-## Multi-VM Setup
-
-1. Copy the `agent/` folder to each VM.
-2. Set `BACKEND_URL`, `VM_ID`, `APP_NAME`, and `LOG_FILES` on each VM.
-3. Start the agent:
-   ```bash
-   node collector.js
-   ```
-
-## Database Partitioning (Bucketing)
-
-We use ClickHouse partitioning to create independent "buckets" for your logs, enabling efficient management and deletion.
-
-**Strategy**: `PARTITION BY (vmId, app, toYYYYMM(timestamp))`
-
-This means every combination of **VM**, **Application**, and **Month** is stored separately on disk.
-
-### Benefits
-1.  **Isolation**: Deleting logs for one app doesn't affect others.
-2.  **Performance**: Dropping a partition is instant (filesystem operation).
-3.  **Automatic Config**: New buckets are created automatically when the agent sends a new `VM_ID` or `APP_NAME`.
-
-### Management Commands
-To delete logs for a specific bucket, run SQL against ClickHouse:
-
-**Delete all logs for App 'mookit' on 'vm-01' for Feb 2026:**
-```sql
-ALTER TABLE logs.logs DROP PARTITION ('vm-01', 'mookit', 202602)
+### C. Central Metric Server (`monitoring-server/.env`)
+Automatically inherits `backend/.env`. Inherited defaults:
+```ini
+DATABASE_TYPE=influxdb
+INFLUXDB_HOST=http://localhost:8086
+INFLUXDB_TOKEN=my-super-secret-auth-token  
+INFLUXDB_ORG=monitoring-org
+INFLUXDB_BUCKET=monitoring
 ```
 
-**Delete everything for a specific VM and Month:**
-*Requires dropping each app partition for that VM, or using a script to iterate.*
+### D. Remote Nodes (`agents`)
+Configured to point to the central monitoring server.
+**Metrics** (`monitoring-agent/config.json`): `server_url: "http://<CENTRAL_IP>:5000"`
+**Logs** (`agent/.env`): `BACKEND_URL=http://<CENTRAL_IP>:5002/api/ingest`
 
-## Production Ops (PM2, systemd, sysctl)
+---
 
-We include production helpers under `ops/`.
+## 4. Deployment Guides
 
-### PM2
-To run the entire unified suite in production, use the root ecosystem file:
-```bash
-npm install -g pm2
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-```
-*Note: `log-backend` is automatically configured to run in `cluster` mode to utilize all available CPU cores.*
+The system features two distinct deployment pathways depending on your environment. 
 
-### systemd (auto-restart on boot)
-```bash
-sudo cp ops/systemd/log-backend.service /etc/systemd/system/
-sudo cp ops/systemd/log-agent.service /etc/systemd/system/
-sudo cp ops/systemd/log-frontend.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now log-backend log-agent log-frontend
-```
+### 1. Production Deployment (Nginx + Docker)
+The `docker-compose.yml` file is tailored for production stability. It orchestrates the databases and backend APIs, and statically builds the frontend to be served efficiently via an **Nginx** web server natively bound to **Port 80**.
 
-### sysctl (kernel tuning)
-
-## Docker Deployment
-
-You can run the entire stack (Backend, Frontend, ClickHouse, and InfluxDB) using Docker Compose.
-
-### Prerequisites
-- Docker & Docker Compose plugin installed (use `docker compose`, not the legacy `docker-compose`).
-
-### Run with Docker
-1. **Configure Environment Variables**
-   - Ensure `backend/.env` has the correct `ALERT_TO_EMAIL` and SMTP settings.
-   - The `CLICKHOUSE_HOST` in `backend/.env` is overridden by docker-compose to point to the `clickhouse` container automatically.
-   - **CRITICAL:** Update `frontend/.env` with your server's Public or Private IP so the browser can reach the backend APIs.
-     ```env
-     VITE_API_BASE_URL=http://<YOUR_SERVER_IP>:5002
-     VITE_SERVER_URL=http://<YOUR_SERVER_IP>:5000
-     ```
-
-2. **Configure Build Arguments (Optional but Recommended)**
-   - If deploying to a remote server, ensure `docker-compose.yml` passes the frontend IP explicitly during the build stage:
-     ```yaml
-       frontend:
-         build:
-           context: ./frontend
-           args:
-             - VITE_SERVER_URL=http://<YOUR_SERVER_IP>:5000
-             - VITE_API_BASE_URL=http://<YOUR_SERVER_IP>:5002
-     ```
-   - *Note: Vite requires these variables at build time to bake the IP into the static HTML/JS bundle.*
-
-3. **Start Services**
+1. **Configure Environment:** Modify `frontend/.env` to reflect your server's public IP address. Populate `backend/.env` with your production SMTP and LDAP credentials.
+2. **Launch Stack:** 
    ```bash
    docker compose up -d --build
    ```
-   *Note: Always use `--build` if you have made changes to the React frontend or Node backend source code to explicitly recompile the Docker images.*
+3. **Access:** Navigate to `http://<YOUR_SERVER_IP>` (No port needed, defaults to 80).
 
-4. **Firewall Configuration (Cloud Deployments)**
-   If you are deploying this on a cloud provider (AWS EC2, GCP, Azure, Oracle Cloud), you **must** configure your Security Groups / Ingress Firewall Rules to allow inbound TCP traffic on the following ports:
-   - **Port 80**: Frontend UI
-   - **Port 5000**: Telemetry WebSocket Backend
-   - **Port 5002**: Log Analytics Backend API
+### 2. Development Deployment (PM2 + Vite)
+For active development or rapid debugging, host the Node.js APIs natively on your OS via PM2, while keeping the databases containerized. In this mode, the frontend uses the active **Vite Dev Server** bound to **Port 5173**.
 
-5. **Access Application**
-   - Frontend: `http://<YOUR_SERVER_IP>`
-   - Backend API: `http://<YOUR_SERVER_IP>:5002`
+1. **Start Databases:** `docker compose up -d clickhouse influxdb`
+2. **Install Dependencies:** Execute `npm install` within all sub-directories.
+3. **Start PM2:** `pm2 start ecosystem.config.js && pm2 save`
+4. **Access:** Navigate to `http://localhost:5173`.
 
-6. **Stop Services**
-   ```bash
-   docker compose down
-   ```
+### Port & Firewall Guidelines
+Ensure inbound TCP traffic allows the following ingress connections globally or from trusted networks:
+- **Port 80/443**: Nginx Production Web Traffic 
+- **Port 5173**: Vite Active Development Traffic
+- **Port 5000**: Metrics WebSocket Streaming Server
+- **Port 5002**: REST API Endpoints & Log Ingestion
 
-7. **View Logs**
-   ```bash
-   docker compose logs -f
-   ```
+---
 
-## TO-DO
+## 5. Security & Analytics Capabilities
 
-1. ~~Total requests Spike -> Alert~~
-2. API keys ingest
-3. ~~Database -> buckets and things~~
-4. ~~Avgs requests and std deviations~~
-5. ~~On the overview page, options to filter the VMs~~
-6. ~~LDAP login~~
-7. Custom Alert Rules Configuration
+- **Database Partitioning Strategy**: ClickHouse partitions table sets strictly by `(vmId, app, toYYYYMM(timestamp))`. This guarantees isolated tenant access and provides immediate directory-layer capability for data purges (Drop Partition).
+- **Automated Threat Detection**: Scheduled algorithms parse ingested logs for high-frequency 401/403 errors (Brute force), SQLi commands, XSS payloads, and Path Traversal attempts.
+- **Alert Debouncing**: The analytical backend aggregates synchronous critical service failures into simplified batched event summaries to mitigate notification fatigue.
+
+---
+
+## 6. Future Works
+
+To make this system even more capable, here is the current roadmap for upcoming features:
+
+*   **Log & Metric Correlation**: Connecting the metric timeline directly to the log explorer for single-click investigation. 
+*   **Auto-Remediation / Self-Healing**: Utilizing the agents to execute predefined bash restart scripts when services shift to `DOWN` states.
+*   **Modern Notification Integrations**: Webhooks designed to push rich alerts into Slack, Microsoft Teams, and Discord.
+*   **Log-Derived Dashboards**: Creating frontend visual panels dynamically based on extracted Log text (e.g., Error Rates, Traffic Maps).
+*   **Centralized Agent Updates**: Updating remote collector scripts seamlessly via the mothership interface without explicit SSH iteration across clusters.
