@@ -7,7 +7,9 @@ const alertCache = new Map();
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour cooldown
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
@@ -16,7 +18,7 @@ const transporter = nodemailer.createTransport({
 
 const checkAndAlert = async () => {
     try {
-        if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.ALERT_TO_EMAIL) {
+        if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.ADMIN_EMAILS) {
             console.log('Alert Service: SMTP credentials or recipient missing. Skipping check.');
             return;
         }
@@ -297,7 +299,7 @@ const sendAlertEmail = async (alerts) => {
 
     const mailOptions = {
         from: `"Log Monitor Security" <${process.env.SMTP_USER}>`,
-        to: process.env.ALERT_TO_EMAIL,
+        to: process.env.ADMIN_EMAILS,
         subject: `[SECURITY] ${alerts.length} Threats Detected - ${Object.keys(alertsByType).join(', ')}`,
         html: htmlContent
     };

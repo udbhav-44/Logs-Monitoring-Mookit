@@ -5,7 +5,7 @@ const fs = require('fs');
 // Mock Environment Variables
 process.env.SMTP_USER = 'test@example.com';
 process.env.SMTP_PASS = 'password';
-process.env.ALERT_TO_EMAIL = 'admin@example.com';
+process.env.ADMIN_EMAILS = 'admin@example.com';
 process.env.HOST = 'localhost';
 
 // Mock Nodemailer
