@@ -85,6 +85,8 @@ services:
   monitoring_backend:
     build: ./monitoring-server
     container_name: monitoring_backend
+    env_file:
+      - ./backend/.env
     depends_on:
       - influxdb
     ports:
