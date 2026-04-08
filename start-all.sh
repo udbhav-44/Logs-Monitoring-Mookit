@@ -83,17 +83,8 @@ cd "$ROOT_DIR"
 # Start Monitoring System Agent
 echo "Starting Monitoring System Agent..."
 cd "$ROOT_DIR/monitoring-agent"
-if [ ! -d "venv" ]; then
-    python3 -m venv venv || true
-fi
-if [ -f "venv/bin/activate" ]; then
-    source venv/bin/activate
-    pip install -r requirements.txt || true
-    python3 agent.py > "$ROOT_DIR/monitoring-agent.log" 2>&1 &
-else
-    # Fallback if venv creation fails
-    python3 agent.py > "$ROOT_DIR/monitoring-agent.log" 2>&1 &
-fi
+npm install
+node agent.js > "$ROOT_DIR/monitoring-agent.log" 2>&1 &
 MON_AGENT_PID=$!
 cd "$ROOT_DIR"
 
