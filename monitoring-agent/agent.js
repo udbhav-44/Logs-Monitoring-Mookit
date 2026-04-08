@@ -454,8 +454,8 @@ class ServiceHealthChecker {
 
 function getDefaultServiceConfig(serviceName) {
     const defaults = {
-        'nginx': { check_type: 'http', url: 'http://127.0.0.1:80', expected_status: [200, 301, 302, 404] },
-        'apache2': { check_type: 'http', url: 'http://127.0.0.1:80', expected_status: [200, 301, 302, 404] },
+        'nginx': { check_type: 'tcp', host: '127.0.0.1', port: 80 },
+        'apache2': { check_type: 'tcp', host: '127.0.0.1', port: 80 },
         'mysql': { check_type: 'command', command: 'mysqladmin ping -h 127.0.0.1' },
         'mariadb': { check_type: 'command', command: 'mysqladmin ping -h 127.0.0.1' },
         'postgresql': { check_type: 'tcp', host: '127.0.0.1', port: 5432 },
