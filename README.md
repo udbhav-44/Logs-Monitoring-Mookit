@@ -187,6 +187,7 @@ Ensure inbound TCP traffic allows the following ingress connections globally or 
 
 - **Database Partitioning Strategy**: ClickHouse partitions table sets strictly by `(vmId, app, toYYYYMM(timestamp))`. This guarantees isolated tenant access and provides immediate directory-layer capability for data purges (Drop Partition).
 - **Automated Threat Detection**: Scheduled algorithms parse ingested logs for high-frequency 401/403 errors (Brute force), SQLi commands, XSS payloads, and Path Traversal attempts.
+- **Active VM Uptime Monitoring**: The central backend proactively polls registered agents via dedicated HTTP health endpoints, ensuring alerts are instantly triggered if a VM abruptly loses network connectivity or goes offline.
 - **Alert Debouncing**: The analytical backend aggregates synchronous critical service failures into simplified batched event summaries to mitigate notification fatigue.
 
 ---

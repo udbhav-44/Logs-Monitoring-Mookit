@@ -449,6 +449,40 @@ class AlertEngine {
     }
 
     /**
+     * Create an alert when the VM is down (unreachable)
+     */
+    async createVMDOWNAlert(vmId, hostname, ip) {
+        try {
+            const message = `VM '${hostname}' (${ip}) is UNREACHABLE via active health checks. The server might be down.`;
+            
+            const alertData = {
+                vmId,
+                hostname,
+                metricType: 'vm_status',
+                severity: 'critical',
+                thresholdValue: 'up',
+                currentValue: 'down',
+                message,
+                triggeredAt: new Date()
+            };
+
+            const alert = await dbAdapter.saveAlert(alertData);
+            
+            console.log(`ALERT TRIGGERED: [CRITICAL] VM DOWN`);
+            console.log(`VM:        ${hostname} (${vmId})`);
+            
+            emailNotifier.sendAlertNotification(alert, { vmId, hostname }).catch(err => {
+                console.error('❌ Email notification failed:', err.message);
+            });
+            
+            return alert;
+        } catch (error) {
+            console.error('Error creating VM DOWN alert:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Update alert rules
      */
     updateRules(newRules) {

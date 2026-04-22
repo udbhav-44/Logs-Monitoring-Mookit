@@ -4,6 +4,7 @@ const cors = require('cors');
 const dbAdapter = require('./dbAdapter');
 const alertEngine = require('./alertEngine');
 const emailNotifier = require('./emailNotifier');
+const VmUptimeChecker = require('./vmUptimeChecker');
 
 const app = express();
 const http = require('http').createServer(app);
@@ -13,11 +14,19 @@ const io = require('socket.io')(http, {
 
 const PORT = process.env.PORT || 5000;
 
+// Discovery Registry
+// Structure: { [vmId]: { hostname, ip, port, lastSeen } }
+const registry = {};
+
 // Initialize Database (TimescaleDB or InfluxDB)
 (async () => {
     try {
         await dbAdapter.initializeDatabase();
         console.log('✓ Alert engine initialized');
+        
+        // Start proactive VM uptime checker
+        const uptimeChecker = new VmUptimeChecker(registry);
+        uptimeChecker.start();
     } catch (err) {
         console.error('✗ Database initialization failed');
         process.exit(1);
@@ -39,9 +48,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Discovery Registry
-// Structure: { [vmId]: { hostname, ip, port, lastSeen } }
-const registry = {};
+// Routes
 
 // Clean up old agents every minute
 setInterval(() => {
